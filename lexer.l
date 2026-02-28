@@ -1,41 +1,54 @@
 %{
     #define T_eof 0
 
-    #define T_and           1001
-    #define T_array         1002
-    #define T_begin         1003
-    #define T_boolean       1004
-    #define T_char          1005
-    #define T_dispose       1006
-    #define T_div           1007
-    #define T_do            1008
-    #define T_else          1009
-    #define T_end           1010
-    #define T_false         1011
-    #define T_forward       1012
-    #define T_function      1013
-    #define T_goto          1014
-    #define T_if            1015
-    #define T_integer       1016
-    #define T_label         1017
-    #define T_mod           1018
-    #define T_new           1019
-    #define T_nil           1020
-    #define T_not           1021
-    #define T_of            1022
-    #define T_or            1023
-    #define T_procedure     1024
-    #define T_program       1025
-    #define T_real          1026
-    #define T_result        1027
-    #define T_return        1028
-    #define T_then          1029
-    #define T_true          1030
-    #define T_var           1031
-    #define T_while         1032
+    #define T_dispose       1001
+    #define T_forward       1002
+    #define T_nil           1003
 
-    #define T_const 1033
-    #define T_id 1034
+    #define T_procedure     1004
+    #define T_begin         1005
+    #define T_end           1006
+    #define T_program       1007
+    #define T_result        1008
+    #define T_return        1009
+    #define T_goto          1010
+    #define T_label         1011
+
+    #define T_while         1012
+    #define T_do            1013
+
+    
+    #define T_if            1014
+    #define T_then          1015
+    #define T_else          1016
+
+    
+    #define T_var           1017
+    #define T_function      1018
+    #define T_set           1019
+
+    #define T_integer       1020
+    #define T_real          1021
+    #define T_array         1022
+    #define T_boolean       1023
+    #define T_char          1024
+    #define T_of            1025
+    #define T_new           1026
+
+    #define T_and           1027
+    #define T_or            1028
+    #define T_not           1029
+    #define T_mod           1030
+    #define T_div           1031
+    #define T_noteq         1032
+    #define T_leq           1033
+    #define T_geq           1034
+
+    #define T_true          1035
+    #define T_false         1036
+
+    #define T_const         1037
+    #define T_id            1038
 %}
 
 D [0-9]
@@ -80,8 +93,13 @@ CHARS [a-zA-Z0-9_]
 "var" { return T_var; }
 "while" { return T_while; }
 
+<> { return T_noteq; }
+>\= { return T_geq; }
+<\= { return T_leq; }
+:\= { return T_set; }
 
-[\=\+\-\*;.()] { return yytext[0]; }
+
+[\=\+\-\*<^>@\[\]\;\.\(\)\:\,] { return yytext[0]; }
 
 {D}+ { return T_const; }
 {D}+\.{D}+ { return T_const; }
