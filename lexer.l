@@ -16,12 +16,10 @@
 
     #define T_while         1012
     #define T_do            1013
-
     
     #define T_if            1014
     #define T_then          1015
     #define T_else          1016
-
     
     #define T_var           1017
     #define T_function      1018
@@ -47,8 +45,12 @@
     #define T_true          1035
     #define T_false         1036
 
-    #define T_const         1037
-    #define T_id            1038
+    #define T_id            1037
+    #define T_int           1038
+    #define T_realNum       1039
+    #define T_bool          1040
+    #define T_charVal       1041
+    #define T_string        1042
 %}
 
 D [0-9]
@@ -93,20 +95,22 @@ CHARS [a-zA-Z0-9_]
 "var" { return T_var; }
 "while" { return T_while; }
 
-<> { return T_noteq; }
->\= { return T_geq; }
-<\= { return T_leq; }
-:\= { return T_set; }
+"<>" { return T_noteq; }
+">=" { return T_geq; }
+"<=" { return T_leq; }
+":=" { return T_set; }
 
 
-[\=\+\-\*<^>@\[\]\;\.\(\)\:\,] { return yytext[0]; }
+[\=\+\-\*\<\^\>\@\[\]\;\.\(\)\:\,] { return yytext[0]; }
 
-{D}+ { return T_const; }
-{D}+\.{D}+ { return T_const; }
-{D}+\.{D}+e{D}+ { return T_const; }
+
 {L}{CHARS}* { return T_id; }
+{D}+ { return T_int; }
+{D}+\.{D}+ { return T_realNum; }
+{D}+\.{D}+e{D}+ { return T_realNum; }
+'.' { return T_charVal; }
+\".*\" { return T_string; }
 {W}+ {  }
-\".*\" { return T_const; }
 
 \(\*.*\*\) { printf("Comment hihi\n"); }
 
