@@ -1,46 +1,49 @@
 %{
     #define T_eof 0
 
-    #define T_and 1
-    #define T_array 2
-    #define T_begin 3
-    #define T_boolean 4
-    #define T_char 5
-    #define T_dispose 6
-    #define T_div 7
-    #define T_do 8
-    #define T_else 9
-    #define T_end 10
-    #define T_false 11
-    #define T_forward 12
-    #define T_function 13
-    #define T_goto 14
-    #define T_if 15
-    #define T_integer 16
-    #define T_label 17
-    #define T_mod 18
-    #define T_new 19
-    #define T_nil 20
-    #define T_not 21
-    #define T_of 22
-    #define T_or 23
-    #define T_procedure 24
-    #define T_program 25
-    #define T_real 26
-    #define T_result 27
-    #define T_return 28
-    #define T_then 29
-    #define T_true 30
-    #define T_var 31
-    #define T_while 32
+    #define T_and           1001
+    #define T_array         1002
+    #define T_begin         1003
+    #define T_boolean       1004
+    #define T_char          1005
+    #define T_dispose       1006
+    #define T_div           1007
+    #define T_do            1008
+    #define T_else          1009
+    #define T_end           1010
+    #define T_false         1011
+    #define T_forward       1012
+    #define T_function      1013
+    #define T_goto          1014
+    #define T_if            1015
+    #define T_integer       1016
+    #define T_label         1017
+    #define T_mod           1018
+    #define T_new           1019
+    #define T_nil           1020
+    #define T_not           1021
+    #define T_of            1022
+    #define T_or            1023
+    #define T_procedure     1024
+    #define T_program       1025
+    #define T_real          1026
+    #define T_result        1027
+    #define T_return        1028
+    #define T_then          1029
+    #define T_true          1030
+    #define T_var           1031
+    #define T_while         1032
 
-    #define T_const 33
-    #define T_id 34
+    #define T_const 1033
+    #define T_id 1034
 %}
 
 D [0-9]
-L [a-z]
-W [ \t\n]
+L [a-zA-Z]
+W [ \t\n\r]
+CHARS [a-zA-Z0-9_]
+
+%option noyywrap
 
 %%
 
@@ -78,13 +81,16 @@ W [ \t\n]
 "while" { return T_while; }
 
 
-[\=\+\-\*] { return yytext[0]; }
+[\=\+\-\*;.()] { return yytext[0]; }
 
 {D}+ { return T_const; }
-{L} { return T_id; }
+{D}+\.{D}+ { return T_const; }
+{D}+\.{D}+e{D}+ { return T_const; }
+{L}{CHARS}* { return T_id; }
 {W}+ {  }
+\".*\" { return T_const; }
 
-'.* {  }
+\(\*.*\*\) { printf("Comment hihi\n"); }
 
 . { fprintf(stderr, "Illegal character %c\n", yytext[0]); }
 
