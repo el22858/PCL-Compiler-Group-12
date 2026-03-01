@@ -1,11 +1,20 @@
+all: distclean pcl
+
 lexer.cpp: lexer.l
 	@flex -s -o lexer.cpp lexer.l
 
-lexer: lexer.cpp
-	@g++ -o lexer lexer.cpp
+lexer.o: lexer.cpp lexer.hpp parser.hpp
+
+parser.hpp parser.cpp: parser.y
+	@bison -dv -o parser.cpp parser.y
+
+parser.o: parser.cpp lexer.hpp
+
+pcl: lexer.o parser.o
+	@g++ -o pcl lexer.o parser.o
 
 clean:
-	@rm lexer.cpp
+	@rm -f lexer.cpp parser.cpp parser.hpp parser.output *.o
 
 distclean: clean
-	@rm lexer
+	@rm -f pcl
