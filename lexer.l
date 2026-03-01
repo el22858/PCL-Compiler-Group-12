@@ -52,11 +52,11 @@ W [ \t\n\r]
 
 
 {L}({L}|{D}|_)* { return T_id; /* variable or function/procedure name */ }
-{D}+(\.{D}+(e[\+\-]?{D}+)?)? { return T_const; /* Any number, int or real */ }
+{D}+\.{D}+(e[\+\-]?{D}+)? { return real_const; }
+{D}+ { return integer_const; }
 
-'\\[ntr0\\\'\"]' { return T_escape; /* All escape characters */ }
-'.' { return T_const; /* Any character, other than '\n' */ }
-\".*\" { return T_const; /* Strings, might have to change this so I can tell it's a char array */ }
+'.' | '\n' { return char_const; /* Any character, including '\n' */ }
+\".*\" { return string_lit; /* Strings, might have to change this so I can tell it's a char array */ }
 
 {W}+ { /* Whitespace, do nothing */ }
 

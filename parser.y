@@ -48,7 +48,10 @@
 %token T_false         "false"
 
 %token T_id
-%token T_const
+%token integer_const
+%token real_const
+%token char_const
+%token string_lit
 %token T_escape
 
 %left '+' '-'
@@ -60,17 +63,36 @@
 
 program : "program" T_id ';' body '.';
 
-body : "begin" stmt_list "end";
+body : localList block;
+localList : | localList local;
+local : "var" decList | "label" idList ';' | header ';' body ';' | "forward" header ';';
+idList : T_id | idList ',' T_id; 
+decList : declaration | decList declaration; 
+declaration : idList ':' type ';'
 
-stmt_list : | stmt_list stmt;
+header : "procedure" T_id '(' optFormalList ')' | "function" T_id '(' optFormalList ')' ':' type;
+optFormalList : | formalList;
+formalList : formal | formalList ';' formal;
 
-stmt : T_id '(' T_const ')' | call;
+formal : optVar idList ':' type;
+optVar :  | "var";
+
+type : "integer" | "real" | "boolean" | "char" | "array" optLength "of" type | "^" type;
+optLength : | '[' integer_const ']';
+
+block : "begin" stmt_list "end";
+stmt_list : stmt | stmt_list 'e' stmt;
+
+stmt :  | lVal ":=" expr | block | call | "if" expr "then" stmt optElse | "while" expr "do" stmt | T_id ':' stmt | "goto" T_id | "return" | "new" optObj lVal | "dispose" optArr lVal;
+optElse :  | "else" stmt;
+optObj : | '[' expr ']';
+optArr : | '[' ']';
 
 expr : lVal | rVal;
 exprList : expr | exprList ',' expr;
 
-lVal : T_id;
-rVal : T_const | unop expr | expr binop expr;
+lVal : T_id | "result" | string_lit | lVal '[' expr ']' | expr '^' | '(' lVal ')';
+rVal : integer_const | "true" | "false" | real_const | char_const | '(' rVal ')' | "nil" | call | '@' lVal | unop expr | expr binop expr;
 
 call : T_id '(' exprList ')'
 
