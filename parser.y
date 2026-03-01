@@ -51,6 +51,11 @@
 %token T_const
 %token T_escape
 
+%left '+' '-'
+%left '*' '/' "div" "mod"
+%left "and" "or"
+%left "not"
+
 %%
 
 program : "program" T_id ';' body '.';
@@ -59,7 +64,19 @@ body : "begin" stmt_list "end";
 
 stmt_list : | stmt_list stmt;
 
-stmt : T_id '(' T_const ')';
+stmt : T_id '(' T_const ')' | call;
+
+expr : lVal | rVal;
+exprList : expr | exprList ',' expr;
+
+lVal : T_id;
+rVal : T_const | unop expr | expr binop expr;
+
+call : T_id '(' exprList ')'
+
+unop : "not" | '+' | '-';
+binop : '+' | '-' | '*' | '/' | "div" | "mod" | "or" | "and" | '=' | "<>" | '<' | "<=" | '>' | ">=";
+
 
 %%
 
@@ -71,6 +88,5 @@ void yyerror(const char *msg) {
 int main() {
     int result = yyparse();
     if (result == 0) printf("Success.\n");
-    printf("%d\n", result);
     return result;
 }
