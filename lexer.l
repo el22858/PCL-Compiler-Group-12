@@ -46,17 +46,13 @@
     #define T_false         1036
 
     #define T_id            1037
-    #define T_int           1038
-    #define T_realNum       1039
-    #define T_bool          1040
-    #define T_charVal       1041
-    #define T_string        1042
+    #define T_const         1038
+    #define T_escape        1039
 %}
 
 D [0-9]
 L [a-zA-Z]
 W [ \t\n\r]
-CHARS [a-zA-Z0-9_]
 
 %option noyywrap
 
@@ -101,18 +97,19 @@ CHARS [a-zA-Z0-9_]
 ":=" { return T_set; }
 
 
-[\=\+\-\*\<\^\>\@\[\]\;\.\(\)\:\,] { return yytext[0]; }
 
+{L}({L}|{D}|_)* { return T_id; /* variable or function/procedure name */ }
+{D}+(\.{D}+(e[\+\-]?{D}+)?)? { return T_const; /* Any number, int or real */ }
 
-{L}{CHARS}* { return T_id; }
-{D}+ { return T_int; }
-{D}+\.{D}+ { return T_realNum; }
-{D}+\.{D}+e{D}+ { return T_realNum; }
-'.' { return T_charVal; }
-\".*\" { return T_string; }
-{W}+ {  }
+'\\[ntr0\\\'\"]' { return T_escape; /* All escape characters */ }
+'.' { return T_const; /* Any character, other than '\n' */ }
+\".*\" { return T_const; /* Strings, might have to change this so I can tell it's a char array */ }
 
-\(\*.*\*\) { printf("Comment hihi\n"); }
+{W}+ { /* Whitespace, do nothing */ }
+
+[\=\+\-\*\\/<\^\>\@\[\]\;\.\(\)\:\,] { return yytext[0]; /* Any single character we don't want in ' '  */ }
+
+\(\*.*\*\) { /* This one is for comments */ }
 
 . { fprintf(stderr, "Illegal character %c\n", yytext[0]); }
 
