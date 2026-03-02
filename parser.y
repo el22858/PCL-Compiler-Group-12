@@ -1,6 +1,7 @@
 %{
     #include <cstdio>
     #include "lexer.hpp"
+    #include "ast.hpp"
 %}
 
 %token T_dispose       "dispose"

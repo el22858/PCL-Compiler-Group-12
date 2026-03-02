@@ -1,5 +1,8 @@
 %{
+    #include "lexer.hpp"
     #include "parser.hpp"
+    #include "ast.hpp"
+
     #define T_eof 0
 %}
 
