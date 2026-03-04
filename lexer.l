@@ -2,6 +2,8 @@
     #include "lexer.hpp"
     #include "parser.hpp"
     #include "ast.hpp"
+    #include <string>
+    using namespace std;
 
     #define T_eof 0
 %}
@@ -47,23 +49,23 @@ W [ \t\n\r]
 "var" { return T_var; }
 "while" { return T_while; }
 
-"<>" { return T_noteq; }
-">=" { return T_geq; }
-"<=" { return T_leq; }
-":=" { return T_set; }
+"<>" { yylval.var = "<>"; return T_noteq; }
+">=" { yylval.var = ">="; return T_geq; }
+"<=" { yylval.var = "<="; return T_leq; }
+":=" { yylval.var = ":="; return T_set; }
 
 
 
-{L}({L}|{D}|_)* { return T_id; /* variable or function/procedure name */ }
-{D}+\.{D}+(e[\+\-]?{D}+)? { return real_const; }
-{D}+ { return integer_const; }
+{L}({L}|{D}|_)* { yylval.var = yytext; return T_id; /* variable or function/procedure name */ }
+{D}+\.{D}+(e[\+\-]?{D}+)? { yylval.real = std::stof(yytext); return real_const; }
+{D}+ { yylval.num = atoi(yytext); return integer_const; }
 
-'.' | '\n' { return char_const; /* Any character, including '\n' */ }
+'.' | '\n' { yylval.c = yytext[0]; return char_const; /* Any character, including '\n' */ }
 \".*\" { return string_lit; /* Strings, might have to change this so I can tell it's a char array */ }
 
 {W}+ { /* Whitespace, do nothing */ }
 
-[\=\+\-\*\\/<\^\>\@\[\]\;\.\(\)\:\,] { return yytext[0]; /* Any single character we don't want in ' '  */ }
+[\=\+\-\*\\/<\^\>\@\[\]\;\.\(\)\:\,] { yylval.c = yytext[0]; return yytext[0]; /* Any single character we don't want in ' '  */ }
 
 \(\*.*\*\) { /* This one is for comments */ }
 

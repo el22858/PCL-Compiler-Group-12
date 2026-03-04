@@ -1,7 +1,9 @@
 %{
     #include <cstdio>
+    #include <string>
     #include "lexer.hpp"
     #include "ast.hpp"
+    using namespace std;
 %}
 
 %token T_dispose       "dispose"
@@ -48,57 +50,165 @@
 %token T_true          "true"
 %token T_false         "false"
 
-%token T_id
-%token integer_const
-%token real_const
-%token char_const
-%token string_lit
+%token<var> T_id
+%token<num> integer_const
+%token<real> real_const
+%token<c> char_const
+%token<var> string_lit
 %token T_escape
+
+%union{
+    string var;
+    int num;
+    float real;
+    char c;
+    Stmt *stmt;
+    Expr *expr;
+    Block *blk;
+    ExprList *eList;
+}
 
 %left '+' '-'
 %left '*' '/' "div" "mod"
 %left "and" "or"
 %left "not"
 
+%type<stmt> stmt;
+%type<expr> expr lVal rVal call;
+%type<blk> stmt_list;
+%type<var> unop stringBinop;
+%type<c> charBinop;
+%type<eList> exprList
+
 %%
 
-program : "program" T_id ';' body '.';
+program : "program" T_id ';' body '.'   { cout << $2 <<"\n"; }
+    ;
 
-body : localList block;
-localList : | localList local;
-local : "var" decList | "label" idList ';' | header ';' body ';' | "forward" header ';';
-idList : T_id | idList ',' T_id; 
-decList : declaration | decList declaration; 
+body : localList block
+    ;
+localList :
+    | localList local
+    ;
+local : "var" decList
+    | "label" idList ';'
+    | header ';' body ';'
+    | "forward" header ';'
+    ;
+idList : T_id
+    | idList ',' T_id
+    ; 
+decList : declaration
+    | decList declaration
+    ; 
 declaration : idList ':' type ';'
+    ;
 
-header : "procedure" T_id '(' optFormalList ')' | "function" T_id '(' optFormalList ')' ':' type;
-optFormalList : | formalList;
-formalList : formal | formalList ';' formal;
+header : "procedure" T_id '(' optFormalList ')'
+    | "function" T_id '(' optFormalList ')' ':' type
+    ;
+optFormalList :
+    | formalList
+    ;
+formalList : formal
+    | formalList ';' formal
+    ;
 
-formal : optVar idList ':' type;
-optVar :  | "var";
+formal : optVar idList ':' type
+    ;
+optVar : 
+    | "var"
+    ;
 
-type : "integer" | "real" | "boolean" | "char" | "array" optLength "of" type | "^" type;
-optLength : | '[' integer_const ']';
+type : "integer"
+    | "real"
+    | "boolean"
+    | "char"
+    | "array" optLength "of" type
+    | "^" type
+    ;
+optLength :
+    | '[' integer_const ']'
+    ;
 
-block : "begin" stmt_list "end";
-stmt_list : stmt | stmt_list 'e' stmt;
+block : "begin" stmt_list "end"
+    ;
+stmt_list : stmt                        { $$ = new Block(); $$->append($1); }
+    | stmt_list ';' stmt                { $1->append($3); $$ = $1; }
+    ;
 
-stmt :  | lVal ":=" expr | block | call | "if" expr "then" stmt optElse | "while" expr "do" stmt | T_id ':' stmt | "goto" T_id | "return" | "new" optObj lVal | "dispose" optArr lVal;
-optElse :  | "else" stmt;
-optObj : | '[' expr ']';
-optArr : | '[' ']';
+stmt : 
+    | lVal ":=" expr
+    | block
+    | call
+    | "if" expr "then" stmt             { $$ = new ITE($2, $4, nullptr); }
+    | "if" expr "then" stmt "else" stmt { $$ = new ITE($2, $4, $6); }
+    | "while" expr "do" stmt            { $$ = new While($2, $4); }
+    | T_id ':' stmt
+    | "goto" T_id
+    | "return"
+    | "new" optObj lVal
+    | "dispose" optArr lVal
+    ;
+optObj :
+    | '[' expr ']'
+    ;
+optArr :
+    | '[' ']'
+    ;
 
-expr : lVal | rVal;
-exprList : expr | exprList ',' expr;
+expr : lVal
+    | rVal
+    ;
+exprList : expr                         { $$ = new ExprList(); $$->append($1); }
+    | exprList ',' expr                 { $1->append($3); $$ = $1; }
+    ;
 
-lVal : T_id | "result" | string_lit | lVal '[' expr ']' | expr '^' | '(' lVal ')';
-rVal : integer_const | "true" | "false" | real_const | char_const | '(' rVal ')' | "nil" | call | '@' lVal | unop expr | expr binop expr;
+lVal : T_id                             { $$ = new Id($1); }
+    | "result"
+    | string_lit                        { $$ = new StringLit($1); }
+    | lVal '[' expr ']'
+    | expr '^'
+    | '(' lVal ')';
+rVal : integer_const                    { $$ = new IntConst($1); }
+    | "true"                            { $$ = new BoolConst(true); }
+    | "false"                           { $$ = new BoolConst(false); }
+    | real_const                        { $$ = new RealConst($1); }
+    | char_const                        { $$ = new CharConst($1); }
+    | '(' rVal ')'
+    | "nil"                             { $$ = new Nil(); }
+    | call
+    | '@' lVal                          { $$ = new UnOp("@", $2); }
+    | unop expr                         { $$ = new UnOp($1, $2); }
+    | expr charBinop expr               { $$ = new CharBinOp($1, $2, $3); }
+    | expr stringBinop expr             { $$ = new StringBinOp($1, $2, $3); }
+    ;
 
-call : T_id '(' exprList ')'
+call : T_id '(' exprList ')'    { $$ = new Call($1, $3); }
+    ;
 
-unop : "not" | '+' | '-';
-binop : '+' | '-' | '*' | '/' | "div" | "mod" | "or" | "and" | '=' | "<>" | '<' | "<=" | '>' | ">=";
+unop : "not"
+    | '+'
+    | '-'
+    ;
+
+charBinop : '+'
+    | '-'
+    | '*'
+    | '/'
+    | '='
+    | '<'
+    | '>'
+    ;
+
+stringBinop : "div"
+    | "mod"
+    | "or"
+    | "and"
+    | "<>"
+    | "<="
+    | ">="
+    ;
 
 
 %%
@@ -110,6 +220,6 @@ void yyerror(const char *msg) {
 
 int main() {
     int result = yyparse();
-    if (result == 0) printf("Success.\n");
+    //if (result == 0) printf("Success.\n");
     return result;
 }
