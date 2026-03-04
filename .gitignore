@@ -1,2 +1,6 @@
 examples/
 backup/
+*.cpp
+*.o
+parser.hpp
+parser.output
