@@ -37,6 +37,7 @@ class StmtList : public Stmt {
             }
             out << ")";
         }
+        virtual void sem() override { for (Stmt *s : stmt_list) s->sem(); }
 
         void append(Stmt* s) { stmt_list.push_back(s); }
 };
@@ -81,9 +82,8 @@ class Block : public Stmt {
         Block(StmtList *sL = nullptr) : stmt_list(sL) {}
         ~Block() { delete stmt_list; }
 
-        virtual void printAST(std::ostream &out) const override {
-            out << "Block(" << *stmt_list << ")";
-        }
+        virtual void printAST(std::ostream &out) const override { out << "Block(" << *stmt_list << ")"; }
+        virtual void sem() override { stmt_list->sem(); }
 };
 
 
@@ -99,6 +99,13 @@ class ITE : public Stmt {
             if (stmt2 != nullptr) out << ", " << *stmt2;
             out << ")";
         }
+        virtual void sem() override {
+            expr->sem();
+            if (expr->typeCheck(TYPE_BOOLEAN)) {
+                stmt1->sem();
+                if (stmt2) stmt2->sem();
+            } else yyerror("Expected boolean.");
+        }
 };
 
 
@@ -110,6 +117,12 @@ class While : public Stmt {
         While(Expr *e, Stmt *s) : expr(e), stmt(s) {}
 
         virtual void printAST(std::ostream &out) const override { out << "While(" << *expr << ", " << *stmt << ")"; }
+        virtual void sem() override {
+            expr->sem();
+
+            if (expr->typeCheck(TYPE_BOOLEAN)) stmt->sem();
+            else yyerror("Expected boolean.");
+        }
 };
 
 
@@ -351,7 +364,11 @@ class Dispose: public Stmt {
             out << "Dispose(";
             if (lVal) out << *lVal;
             else if (exprPtr) out << *exprPtr;
-            out << ")"; }
+            out << ")";
+        }
+        virtual void sem() override {
+
+        }
 };
 
 
@@ -440,6 +457,7 @@ class Decl : public AST {
         }
 
         virtual void printAST(std::ostream &out) const override { out << "Declaration(" << *idList << ", " << *type << ")"; }
+        virtual void sem() override {}
 };
 
 
@@ -461,6 +479,7 @@ class DeclList : public AST {
             }
             out << ")";
         }
+        virtual void sem() override { for (Decl *d : decList) d->sem(); }
 };
 
 
@@ -500,6 +519,7 @@ class FormalList : public AST {
             }
             out << ")";
         }
+        virtual void sem() override { for (Formal *f : formalList) f->sem(); }
 };
 
 
@@ -532,6 +552,9 @@ class Function : public Header {
         }
 
         virtual void printAST(std::ostream &out) const { out << "Function(" << *id << ", type=" << *type << ", " << *formalList << ")"; }
+        virtual void sem() override {
+            std::string s = id->getName();
+        }
 
 };
 
@@ -557,6 +580,14 @@ class Local : public AST {
             else if (localType.compare("forward") == 0) out << *hdr;
             out << ")";
         }
+        virtual void sem() override {
+            if (localType.compare("var") == 0) dList->sem();
+            else if (localType.compare("label")) lbl->sem();
+            else if (localType.compare("forp")) {
+                hdr->sem();
+                body->sem();
+            } else if (localType.compare("forward")) hdr->sem();
+        }
 };
 
 
@@ -578,6 +609,7 @@ class LocalList : public AST {
             }
             out << ")";
         }
+        virtual void sem() override { for (Local *l : localList) l->sem(); }
 };
 
 
@@ -593,6 +625,10 @@ class Body : public Stmt {
         }
 
         virtual void printAST(std::ostream &out) const override { out << "Body(" << *localList << ", " << *block << ")"; }
+        virtual void sem() override {
+            localList->sem();
+            block->sem();
+        }
 };
 
 
