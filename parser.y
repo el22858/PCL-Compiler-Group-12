@@ -1,12 +1,15 @@
 %{
-    #include <cstdio>
-    #include <string>
     #include "ast.hpp"
+    #include <cstdio>
     #include "lexer.hpp"
-    using namespace std;
+    #include <memory>
+    #include <string>
+    #include "symbol.hpp"
 
     #define YYERROR_VERBOSE 1
     #define YYDEBUG 1
+
+    SymbolTable st;
 %}
 
 
@@ -143,7 +146,7 @@
 
 %%
 
-program : "program" T_id ";" body "."                       { cout << *$4 <<"\n"; }
+program : "program" T_id ";" body "."                       { std::cout << *$4 <<"\n"; }
     ;
 
 body : localList block                                      { $$ = new Body{$1, $2}; }

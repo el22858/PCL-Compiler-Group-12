@@ -2,14 +2,14 @@
     #include "ast.hpp"
     #include "lexer.hpp"
     #include "parser.hpp"
+    #include "symbol.hpp"
     #include <vector>
-    using namespace std;
 
     #define T_eof 0
-    vector<char *> ids, stringLits, operators;
-    vector<char> constChars;
-    vector<int> constInts;
-    vector<double> constReals;
+    std::vector<char *> ids, stringLits, operators;
+    std::vector<char> constChars;
+    std::vector<int> constInts;
+    std::vector<double> constReals;
 %}
 
 D [0-9]

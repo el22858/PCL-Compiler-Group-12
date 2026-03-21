@@ -1,20 +1,14 @@
+#ifndef AST_HPP
+#define AST_HPP
+
 #include <iostream>
+#include <memory>
+#include <cstring>
 #include <vector>
 
+#include "tree.hpp"
+#include "type.hpp"
 #include "symbol.hpp"
-
-using namespace std;
-
-class AST {
-    private:
-    public:
-        virtual void printAST(ostream &out) const = 0;        
-};
-
-inline ostream &operator<<(ostream &out, const AST &ast) {
-    ast.printAST(out);
-    return out;
-}
 
 
 class Stmt : public AST {
@@ -25,42 +19,46 @@ class Stmt : public AST {
 
 class StmtList : public Stmt {
     private:
-        vector<Stmt *> stmt_list;
+        std::vector<Stmt *> stmt_list;
     public:
         StmtList() : stmt_list() {}
         ~StmtList() { for (Stmt *s : stmt_list) delete s; }
 
-        virtual void printAST(ostream &out) const override {
-            out << "StatmentList(";
+        virtual void printAST(std::ostream &out) const override {
+            out << "StatementList(";
             bool start = true;
 
-            for (const auto &x : stmt_list) {
-                if (!start) out << ", ";
-                start = false;
-                out << *x;
+            if (stmt_list.size() > 0 ) {
+                for (const auto &x : stmt_list) {
+                    if (!start) out << ", ";
+                    start = false;
+                    if (x) out << *x;
+                }
             }
             out << ")";
         }
 
-        void append(Stmt *s) { stmt_list.push_back(s); }
+        void append(Stmt* s) { stmt_list.push_back(s); }
 };
 
 
 class Expr : public AST {
     private:
     public:
+        Types type;
+        bool typeCheck(Types t) { return type == t; }
 };
 
 
 class ExprList : public Expr {
     private:
-        vector<Expr *> expr_list;
+        std::vector<Expr *> expr_list;
     public:
         ExprList() : expr_list() {}
         ~ExprList() { for (Expr *e : expr_list) delete e; }
 
         void append(Expr *e) {expr_list.push_back(e);}
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "ExpressionList(";
             bool start = true;
 
@@ -71,93 +69,8 @@ class ExprList : public Expr {
             }
             out << ")";
         }
-};
 
-
-enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER};
-
-
-class Type : public AST {
-    private:
-        Types val;
-    public:
-};
-
-
-class Integer : public Type {
-    private:
-        Types val;
-    public:
-        Integer() : val(TYPE_INTEGER) {}
-
-        virtual void printAST(ostream &out) const override { out << "Integer()"; }
-};
-
-
-class String : public Type {
-    private:
-        Types val;
-    public:
-        String() : val(TYPE_STRING) {}
-
-        virtual void printAST(ostream &out) const override { out << "String()"; }
-};
-
-
-class Char : public Type {
-    private:
-        Types val;
-    public:
-        Char() : val(TYPE_CHAR) {}
-
-        virtual void printAST(ostream &out) const override { out << "Const()"; }
-};
-
-
-class Real : public Type {
-    private:
-        Types val;
-    public:
-        Real() : val(TYPE_REAL) {}
-
-        virtual void printAST(ostream &out) const override { out << "Real()"; }
-};
-
-
-class Boolean : public Type {
-    private:
-        Types val;
-    public:
-        Boolean() : val(TYPE_BOOLEAN) {}
-
-        virtual void printAST(ostream &out) const override { out << "Boolean()"; }
-};
-
-
-class Array : public Type {
-    private:
-        Types val;
-        Type *arType;
-        int size;
-    public:
-        Array(Type *t, int s = -1) : val(TYPE_ARRAY), arType(t) { size = (s > 0) ? s : -1; }
-
-        virtual void printAST(ostream &out) const override {
-            out << "Array(";
-            if (size > 0) out << "size=" << size << ", ";
-            out << "type=" << *arType << ")";
-        }
-};
-
-
-class Pointer : public Type {
-    private:
-        Types val;
-        Type *pType;
-    public:
-        Pointer(Type *t) : val(TYPE_POINTER), pType(t) {}
-
-        virtual void printAST(ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
+        virtual void sem() override { for (Expr *e : expr_list) e->sem(); }
 };
 
 
@@ -168,7 +81,7 @@ class Block : public Stmt {
         Block(StmtList *sL = nullptr) : stmt_list(sL) {}
         ~Block() { delete stmt_list; }
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "Block(" << *stmt_list << ")";
         }
 };
@@ -181,7 +94,7 @@ class ITE : public Stmt {
     public:
         ITE(Expr *e, Stmt *s1, Stmt *s2 = nullptr) : expr(e), stmt1(s1), stmt2(s2) {}
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "If(" << *expr << ", " << *stmt1;
             if (stmt2 != nullptr) out << ", " << *stmt2;
             out << ")";
@@ -196,7 +109,7 @@ class While : public Stmt {
     public:
         While(Expr *e, Stmt *s) : expr(e), stmt(s) {}
 
-        virtual void printAST(ostream &out) const override { out << "While(" << *expr << ", " << *stmt << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "While(" << *expr << ", " << *stmt << ")"; }
 };
 
 
@@ -220,7 +133,19 @@ class UnOp : public RVal {
             delete expr;
         }
 
-        virtual void printAST(ostream &out) const override { out << "UnOp(" << *op << ", " << *expr << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "UnOp(" << op << ", " << *expr << ")"; }
+        virtual void sem() override {
+            expr->sem();
+
+            if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0)) {
+                if (expr->typeCheck(TYPE_INTEGER)) type = TYPE_INTEGER;
+                else if (expr->typeCheck(TYPE_REAL)) type = TYPE_REAL;
+                else yyerror("Expected number");
+            } else if (strcmp(op, "not") == 0) {
+                if (expr->typeCheck(TYPE_BOOLEAN)) type = TYPE_BOOLEAN;
+                else yyerror("Expected boolean.");
+            } else yyerror("Unary Operator not recognized"); // Trash
+        }
 };
 
 
@@ -236,7 +161,37 @@ class BinOp : public RVal {
             delete expr2;
         }
 
-        virtual void printAST(ostream &out) const override { out << "BinOp(" << *expr1 << ", " << *op << ", " << *expr2 << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "BinOp(" << *expr1 << ", " << op << ", " << *expr2 << ")"; }
+        virtual void sem() override {
+            expr1->sem();
+            expr2->sem();
+
+            if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0) || (strcmp(op, "*") == 0)) {
+                if (expr1->typeCheck(TYPE_INTEGER)) {
+                    if (expr2->typeCheck(TYPE_INTEGER)) type = TYPE_INTEGER;
+                    else if (expr2->typeCheck(TYPE_REAL)) type = TYPE_REAL;
+                    else yyerror("Expected int or real.");
+                } else if (expr1->typeCheck(TYPE_REAL)) {
+                    if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = TYPE_REAL;
+                    else yyerror("Expected int or real.");
+                }
+            } else if (strcmp(op, "/")) {
+                if ((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = TYPE_REAL;
+                else yyerror("Expected int or real.");
+            } else if ((strcmp(op, "div") == 0) || (strcmp(op, "mod") == 0)) {
+                if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = TYPE_INTEGER;
+                else yyerror("Expected int.");
+            } else if ((strcmp(op, "and") == 0) || (strcmp(op, "or") == 0)) {
+                if ((expr1->typeCheck(TYPE_BOOLEAN) && (expr2->typeCheck(TYPE_BOOLEAN)))) type = TYPE_BOOLEAN;
+                else yyerror("Expected boolean.");
+            } else if ((strcmp(op, "<") == 0) || (strcmp(op, ">") == 0) || (strcmp(op, "<=") == 0) || (strcmp(op, ">=") == 0)) {
+                if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = TYPE_BOOLEAN;
+                else yyerror("Expected int or real.");
+            } else if ((strcmp(op, "=") == 0) || (strcmp(op, "<>") == 0)) {
+                if (expr1->type == expr2->type) type = TYPE_BOOLEAN;
+                else yyerror("Type mismatch!");
+            }
+        }
 };
 
 
@@ -244,10 +199,10 @@ class IntConst : public RVal {
     private:
         int val;
     public:
-        Type *type;
-        IntConst(int n) : val(n) { type = new Integer(); }
+        Types type;
+        IntConst(int n) : val(n), type(TYPE_INTEGER) {}
 
-        virtual void printAST(ostream &out) const override { out << "IntConst(" << val << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
 };
 
 
@@ -255,10 +210,10 @@ class BoolConst : public RVal {
     private:
         bool val;
     public:
-        Type *type;
-        BoolConst(bool b) : val(b) { type = new Boolean(); }
+        Types type;
+        BoolConst(bool b) : val(b), type(TYPE_BOOLEAN) {}
 
-        virtual void printAST(ostream &out) const override { out << "BoolConst('" << val << "')"; }
+        virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
 };
 
 
@@ -266,20 +221,20 @@ class RealConst : public RVal {
     private:
         float val;
     public:
-        Type *type;
-        RealConst(float f) : val(f) { type = new Real(); }
+        Types type;
+        RealConst(float f) : val(f), type(TYPE_REAL) {}
 
-        virtual void printAST(ostream &out) const override { out << "RealConst(" << val << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
 };
 
 class CharConst : public RVal {
     private:
         char val;
     public:
-        Type *type;
-        CharConst(char c) : val(c) { type = new Char(); }
+        Types type;
+        CharConst(char c) : val(c), type(TYPE_CHAR) {}
 
-        virtual void printAST(ostream &out) const override { out << "CharConst(" << val << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "CharConst(" << val << ")"; }
 };
 
 
@@ -288,7 +243,7 @@ class Nil : public RVal {
     public:
         Nil() {}
 
-        virtual void printAST(ostream &out) const override { out << "Nil()";}
+        virtual void printAST(std::ostream &out) const override { out << "Nil()";}
 };
 
 
@@ -296,10 +251,10 @@ class StringLit : public LVal {
     private:
         char *val;
     public:
-        Type *type;
-        StringLit(char *s) : val(s) { type = new String(); }
+        Types type;
+        StringLit(char *s) : val(s), type(TYPE_STRING) {}
 
-        virtual void printAST(ostream &out) const override { out << "StringLit(" << *val << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
 };
 
 
@@ -309,19 +264,20 @@ class Id : public LVal {
     public:
         Id(char *s) : id(s) {}
 
-        virtual void printAST(ostream &out) const override { out << "Id(" << *id << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Id(" << id << ")"; }
+        char* getName() { return id; }
 };
 
 
 class IdList : public AST {
     private:
-        vector<Id *> idList;
+        std::vector<Id *> idList;
     public:
         IdList(): idList() {}
         ~IdList() { for (Id *id : idList) delete id; }
 
         void append(Id *id) { idList.push_back(id); }
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "IdList(";
             bool start = true;
             for (Id *id : idList) {
@@ -341,7 +297,7 @@ class IdLabel : public Stmt {
     public:
         IdLabel(Id *i, Stmt *s) : id(i), stmt(s) {}
 
-        virtual void printAST(ostream &out) const override { out << "IdLabel(" << *id << ", " << *stmt << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "IdLabel(" << *id << ", " << *stmt << ")"; }
 };
 
 
@@ -356,7 +312,7 @@ class ArrayItem: public LVal {
             delete expr;
         }
 
-        virtual void printAST(ostream &out) const override {out << "ArrayItem(" << *lVal << ", " << *expr << ")";}
+        virtual void printAST(std::ostream &out) const override {out << "ArrayItem(" << *lVal << ", " << *expr << ")";}
 };
 
 
@@ -367,7 +323,7 @@ class Call : public Stmt {
     public:
         Call(Id *i, ExprList *eL=nullptr) : id(i), func(eL) {}
 
-        virtual void printAST(ostream &out) const override { out << "Call(" << *id << ", " << *func << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Call(" << *id << ", " << *func << ")"; }
 };
 
 
@@ -378,7 +334,7 @@ class CallRVal : public RVal {
     public:
         CallRVal(Id *i, ExprList *eL=nullptr) : id(i), func(eL) {}
 
-        virtual void printAST(ostream &out) const override { out << "CallRVal(" << *id << ", " << *func << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "CallRVal(" << *id << ", " << *func << ")"; }
 };
 
 
@@ -391,7 +347,7 @@ class Dispose: public Stmt {
         Dispose(Expr *e) : exprPtr(e) { lVal = nullptr; }
         ~Dispose() { delete lVal; }
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "Dispose(";
             if (lVal) out << *lVal;
             else if (exprPtr) out << *exprPtr;
@@ -406,7 +362,7 @@ class Label: public Stmt {
         Label(IdList *iL) : idList(iL) {}
         ~Label() { delete idList; }
 
-        virtual void printAST(ostream &out) const override { out << "Label(" << *idList << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Label(" << *idList << ")"; }
 };
 
 
@@ -422,7 +378,7 @@ class Assign: public Stmt {
             delete expr;
         }
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "Assign(";
             if (lval) out << *lval;
             else if (exprPtr) out << *exprPtr;
@@ -435,7 +391,7 @@ class Return: public Stmt {
     public:
         Return() {};
 
-        virtual void printAST(ostream &out) const override { out << "Return()"; }
+        virtual void printAST(std::ostream &out) const override { out << "Return()"; }
 };
 
 
@@ -451,7 +407,7 @@ class New: public Stmt {
             delete expr;
         }
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "New(";
             if (lVal) out << *lVal;
             else if (exprPtr) out << *exprPtr;
@@ -468,7 +424,7 @@ class Goto: public Stmt {
         Goto(Id *c) : id(c) {}
         ~Goto() { delete id; }
 
-        virtual void printAST(ostream &out) const override { out << "Goto(" << *id << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Goto(" << *id << ")"; }
 };
 
 
@@ -483,19 +439,19 @@ class Decl : public AST {
             delete type;
         }
 
-        virtual void printAST(ostream &out) const override { out << "Declaration(" << *idList << ", " << *type << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Declaration(" << *idList << ", " << *type << ")"; }
 };
 
 
 class DeclList : public AST {
     private:
-        vector<Decl *> decList;
+        std::vector<Decl *> decList;
     public:
         DeclList() : decList() {}
         ~DeclList() { for (Decl *d : decList) delete d; }
 
         void append(Decl *d) { decList.push_back(d); }
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "DeclList(";
             bool start = true;
             for (Decl *d : decList) {
@@ -522,19 +478,19 @@ class Formal : public AST {
         delete type;
     }
 
-    void printAST(ostream &out) const override { out << "Formal(" << *idList << ", " << *type << ")"; }
+    void printAST(std::ostream &out) const override { out << "Formal(" << *idList << ", " << *type << ")"; }
 };
 
 
 class FormalList : public AST {
     private:
-        vector<Formal *> formalList;
+        std::vector<Formal *> formalList;
     public:
         FormalList() : formalList() {}
         ~FormalList() { for (Formal *f : formalList) delete f; }
 
         void append(Formal *f) { formalList.push_back(f); }
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "FormalList(";
             bool start = true;
             for (Formal *f : formalList) {
@@ -558,7 +514,7 @@ class Procedure : public Header {
             delete formalList;
         }
 
-        virtual void printAST(ostream &out) const override { out << "Procedure(" << *id << ", " << *formalList << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Procedure(" << *id << ", " << *formalList << ")"; }
 };
 
 
@@ -575,7 +531,7 @@ class Function : public Header {
             delete formalList;
         }
 
-        virtual void printAST(ostream &out) const { out << "Function(" << *id << ", type=" << *type << ", " << *formalList << ")"; }
+        virtual void printAST(std::ostream &out) const { out << "Function(" << *id << ", type=" << *type << ", " << *formalList << ")"; }
 
 };
 
@@ -586,14 +542,14 @@ class Local : public AST {
         Label *lbl;
         Header *hdr;
         AST *body;
-        string localType;
+        std::string localType;
     public:
         Local(DeclList *dL) : dList(dL), localType("var") {}
         Local(Label *l) : lbl(l), localType("label") {}
         Local(Header *h, AST *b) : hdr(h), body(b), localType("forp") {}
         Local(Header *h) : hdr(h), localType("forward") {}
 
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "Local(";
             if (localType.compare("var") == 0) out << *dList;
             else if (localType.compare("label") == 0) out << *lbl;
@@ -606,13 +562,13 @@ class Local : public AST {
 
 class LocalList : public AST {
     private:
-        vector<Local *> localList;
+        std::vector<Local *> localList;
     public:
         LocalList(): localList() {}
         ~LocalList() { for (Local *l : localList) delete l; }
 
         void append(Local *l) { localList.push_back(l); }
-        virtual void printAST(ostream &out) const override {
+        virtual void printAST(std::ostream &out) const override {
             out << "LocalList(";
             bool start = true;
             for (Local *l : localList) {
@@ -636,7 +592,7 @@ class Body : public Stmt {
             delete block;
         }
 
-        virtual void printAST(ostream &out) const override { out << "Body(" << *localList << ", " << *block << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Body(" << *localList << ", " << *block << ")"; }
 };
 
 
@@ -647,7 +603,7 @@ class Reference : public RVal {
         Reference(LVal *l) : lVal(l) {}
         ~Reference() { delete lVal; }
 
-        virtual void printAST(ostream &out) const override { out << "Reference(" << *lVal << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Reference(" << *lVal << ")"; }
 };
 
 
@@ -656,5 +612,7 @@ class Result : public LVal {
     public:
         Result() {}
 
-        virtual void printAST(ostream &out) const override { out << "Result()"; }
+        virtual void printAST(std::ostream &out) const override { out << "Result()"; }
 };
+
+#endif
