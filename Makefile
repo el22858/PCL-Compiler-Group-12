@@ -1,7 +1,7 @@
 all: distclean pcl
 
 lexer.cpp: lexer.l
-	@flex -s -o lexer.cpp lexer.l
+	@flex $<
 
 lexer.o: lexer.cpp lexer.hpp parser.hpp ast.hpp
 	@g++ -c -o lexer.o lexer.cpp
@@ -16,7 +16,7 @@ pcl: lexer.o parser.o
 	@g++ -Wall -o pcl lexer.o parser.o
 
 clean:
-	@rm -f lexer.cpp parser.cpp parser.hpp parser.output *.o
+	@rm -f lexer.cpp parser.cpp parser.hpp parser.output *.o location.hpp
 
 distclean: clean
 	@rm -f pcl

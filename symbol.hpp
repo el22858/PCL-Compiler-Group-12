@@ -24,7 +24,7 @@ class Scope {
         Scope(int o) : locals(), offset(o) {}
 
         void insert(char *id, Types type) {
-            if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
+            // if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
             locals[id] = STEntry(type, offset++);
         }
         STEntry* lookup(char *id) {
@@ -47,7 +47,7 @@ class SymbolTable {
                 if (e) return e;
             }
 
-            yyerror("Variable not found.");
+            // yyerror("Variable not found.");
             return nullptr;
         }
 

@@ -6,3 +6,4 @@ parser.hpp
 parser.output
 pcl
 pcl.exe
+location.hpp
