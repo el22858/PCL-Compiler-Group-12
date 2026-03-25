@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-#include "lexer.hpp"
+#include "basic.hpp"
 #include "type.hpp"
 
 struct STEntry {

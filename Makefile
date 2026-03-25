@@ -16,7 +16,8 @@ pcl: lexer.o parser.o
 	@g++ -Wall -o pcl lexer.o parser.o
 
 clean:
-	@rm -f lexer.cpp parser.cpp parser.hpp parser.output *.o location.hpp
+	@clear
+	@rm -f lexer.cpp lexer.hpp parser.cpp parser.hpp parser.output *.o location.hpp
 
 distclean: clean
 	@rm -f pcl

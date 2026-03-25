@@ -38,7 +38,7 @@ class StmtList : public Stmt {
         }
         virtual void sem() override { for (auto &s : stmt_list) s->sem(); }
 
-        void append(std::unique_ptr<Stmt> s) { stmt_list.insert(stmt_list.begin(), s); }
+        void append(std::unique_ptr<Stmt> s) { stmt_list.insert(stmt_list.begin(), std::move(s)); }
 };
 
 
@@ -56,7 +56,7 @@ class ExprList : public Expr {
     public:
         ExprList() : expr_list() {}
 
-        void append(std::unique_ptr<Expr> e) { expr_list.insert(expr_list.begin(), e); }
+        void append(std::unique_ptr<Expr> e) { expr_list.insert(expr_list.begin(), std::move(e)); }
         virtual void printAST(std::ostream &out) const override {
             out << "ExpressionList(";
             bool start = true;
@@ -282,7 +282,7 @@ class IdList : public AST {
     public:
         IdList(): idList() {}
 
-        void append(std::unique_ptr<Id> id) { idList.insert(idList.begin(), id); }
+        void append(std::unique_ptr<Id> id) { idList.insert(idList.begin(), std::move(id)); }
         virtual void printAST(std::ostream &out) const override {
             out << "IdList(";
             bool start = true;
@@ -447,7 +447,7 @@ class DeclList : public AST {
     public:
         DeclList() : decList() {}
 
-        void append(std::unique_ptr<Decl> d) { decList.insert(decList.begin(), d); }
+        void append(std::unique_ptr<Decl> d) { decList.insert(decList.begin(), std::move(d)); }
         virtual void printAST(std::ostream &out) const override {
             out << "DeclList(";
             bool start = true;
@@ -482,7 +482,7 @@ class FormalList : public AST {
     public:
         FormalList() : formalList() {}
 
-        void append(std::unique_ptr<Formal> f) { formalList.insert(formalList.begin(), f); }
+        void append(std::unique_ptr<Formal> f) { formalList.insert(formalList.begin(), std::move(f)); }
         virtual void printAST(std::ostream &out) const override {
             out << "FormalList(";
             bool start = true;
@@ -562,7 +562,7 @@ class LocalList : public AST {
     public:
         LocalList(): localList() {}
 
-        void append(std::unique_ptr<Local> l) { localList.insert(localList.begin(), l); }
+        void append(std::unique_ptr<Local> l) { localList.insert(localList.begin(), std::move(l)); }
         virtual void printAST(std::ostream &out) const override {
             out << "LocalList(";
             bool start = true;

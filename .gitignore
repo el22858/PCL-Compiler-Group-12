@@ -2,6 +2,7 @@ examples/
 backup/
 *.cpp
 *.o
+lexer.hpp
 parser.hpp
 parser.output
 pcl
