@@ -2,6 +2,7 @@
 #define TYPE_HPP
 
 #include <iostream>
+#include <memory>
 #include "tree.hpp"
 
 enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER};
@@ -66,10 +67,10 @@ class Boolean : public Type {
 class Array : public Type {
     private:
         Types val;
-        Type *arType;
+        std::unique_ptr<Type> arType;
         int size;
     public:
-        Array(Type *t, int s = -1) : val(TYPE_ARRAY), arType(t) { size = (s > 0) ? s : -1; }
+        Array(std::unique_ptr<Type> t, int s = -1) : val(TYPE_ARRAY), arType(std::move(t)) { size = (s > 0) ? s : -1; }
 
         virtual void printAST(std::ostream &out) const override {
             out << "Array(";
@@ -82,9 +83,9 @@ class Array : public Type {
 class Pointer : public Type {
     private:
         Types val;
-        Type *pType;
+        std::unique_ptr<Type> pType;
     public:
-        Pointer(Type *t) : val(TYPE_POINTER), pType(t) {}
+        Pointer(std::unique_ptr<Type> t) : val(TYPE_POINTER), pType(std::move(t)) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
 };

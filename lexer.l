@@ -2,10 +2,13 @@
     #include "ast.hpp"
     #include "basic.hpp"
     #include "parser.hpp"
-    #include "symbol.hpp"
 
-    #define YY_DECL yy::parser::symbol_type ylex()
+    #define YY_DECL yy::parser::symbol_type yylex()
 }
+
+%option warn noyywrap nodefault nounput yylineno
+%option header-file="lexer.hpp"
+%option outfile="lexer.cpp"
 
 %{
     #include <iostream>
@@ -26,10 +29,6 @@
 D [0-9]
 L [a-zA-Z]
 W [ \t\n\r]
-
-%option warn noyywrap nodefault nounput yylineno
-%option header-file="lexer.hpp"
-%option outfile="lexer.cpp"
 
 %%
 
@@ -106,7 +105,7 @@ W [ \t\n\r]
 
 \(\*.*\*\) { /* This one is for comments */ }
 
-. { std::cerr << "Illegal character '" << yytext[0] << "' found at line " /* << loc.begin.lin */ << "." << std::endl; exit(1); }
+. { std::cerr << "Illegal character '" << yytext[0] << "' found at line " << loc.begin.line << "." << std::endl; exit(1); }
 
 <<EOF>> { return yy::parser::make_YYEOF(loc); }
 

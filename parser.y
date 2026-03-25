@@ -7,19 +7,23 @@
 %define api.location.file "location.hpp"
 
 %{
-    #include "ast.hpp"
-    #include "basic.hpp"
     #include <cstdio>
-    #include "lexer.hpp"
     #include <memory>
     #include <string>
-    #include "symbol.hpp"
+%}
 
-    #define YYERROR_VERBOSE 1
-    #define YYDEBUG 1
+%code requires {
+    #include "ast.hpp"
+}
 
+%{
+    #include "lexer.hpp"
     YY_DECL;
 
+    #include "basic.hpp"
+    #include "symbol.hpp"
+
+    static std::unique_ptr<Body> ast;
     SymbolTable st;
 %}
 
@@ -134,13 +138,14 @@
 
 program : "program" T_id ";" body "." {
         std::cout << *$4 <<"\n";
-        st.enterScope();
-        /* $4->sem(); */
-        st.exitScope();
+        /* ast = $4; */
+        /* st.enterScope();
+        $4->sem();
+        st.exitScope(); */
     }
     ;
 
-body : localList block                                      { $$ = std::make_unique<Body>{$1, $2}; }
+body : localList block                                      { $$ = std::make_unique<Body>($1, $2); }
     ;
 localList :                                                 { $$ = std::make_unique<LocalList>(); }
     | localList local                                       { $$ = $1; $$->append($2); }
@@ -150,7 +155,7 @@ local : "var" decList                                       { $$ = std::make_uni
     | header ";" body ";"                                   { $$ = std::make_unique<Local>($1, $3); }
     | "forward" header ";"                                  { $$ = std::make_unique<Local>($2); }
     ;
-label : T_id idList ";"                                     { $$ = $2; $$->append(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>($$); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); ids.pop_back(); */ }
+label : T_id idList ";"                                     { auto x = $2; x->append(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>(std::move(x)); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); */ }
     ;
 idList :                                                    { $$ = std::make_unique<IdList>(); }
     | idList "," T_id                                       { $$ = $1; $$->append(std::make_unique<Id>(ids.back())); ids.pop_back(); }
@@ -158,12 +163,12 @@ idList :                                                    { $$ = std::make_uni
 decList : declaration                                       { $$ = std::make_unique<DeclList>(); $$->append($1); }
     | decList declaration                                   { $$ = $1; $$->append($2); }
     ; 
-declaration : T_id idList ":" type ";"                      {  $$ = $2; $$->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Decl>($$, $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Decl($2, $4); */ ids.pop_back(); }
+declaration : T_id idList ":" type ";"                      {  auto x = $2; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Decl>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Decl($2, $4); */ ids.pop_back(); }
     ;
 
-header : "procedure" T_id "(" formal formalList ")"         { $$ = $5; $$->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $$); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
-    | "procedure" T_id "(" ")"                               { $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
-    | "function" T_id "(" formal formalList ")" ":" type    { $$ = $5; $$->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $$); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
+header : "procedure" T_id "(" formal formalList ")"         { auto x = $5; x->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), std::move(x)); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
+    | "procedure" T_id "(" ")"                              { $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
+    | "function" T_id "(" formal formalList ")" ":" type    { auto x = $5; x->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, std::move(x)); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
     | "function" T_id "(" ")" ":" type                      { $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $6); ids.pop_back(); }
     ;
 
@@ -171,8 +176,8 @@ formalList :                                                { $$ = std::make_uni
     | formalList ";" formal                                 { $$ = $1; $$->append($3); }
     ;
 
-formal : "var" T_id idList ":" type                         { $$ = $3; $$->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($$, $5) /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
-    | T_id idList ":" type                                  { $$ = $2; $$->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($$, $4) /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
+formal : "var" T_id idList ":" type                         { auto x = $3; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $5); /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
+    | T_id idList ":" type                                  { auto x = $2; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
     ;
 
 type : "integer"                                            { $$ = std::make_unique<Integer>(); }
@@ -185,7 +190,7 @@ type : "integer"                                            { $$ = std::make_uni
     ;
 
 block :
-    "begin" stmt stmt_list "end"                            { $$ = $3; $$->append($2); $$ = std::make_unique<Block>($$);  /* $3->append($2); $$ = std::make_unique<Block>($3); */ }
+    "begin" stmt stmt_list "end"                            { auto x = $3; x->append($2); $$ = std::make_unique<Block>(std::move(x));  /* $3->append($2); $$ = std::make_unique<Block>($3); */ }
     ;
 stmt_list :                                                 { $$ = std::make_unique<StmtList>(); }
     | stmt_list ";" stmt                                    { $$ = $1; $$->append($3); }
@@ -252,11 +257,11 @@ rVal : integer_const                                        { $$ = std::make_uni
     | expr ">=" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
     ;
 
-call : T_id "(" expr exprList ")"                                { $$ = $4; $$->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $$); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
+call : T_id "(" expr exprList ")"                           { auto x = $4; x->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
     | T_id "(" ")"                                          { $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     ;
 
-rCall : T_id "(" expr exprList ")"                                { $$ = $4; $$->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $$); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
+rCall : T_id "(" expr exprList ")"                          { auto x = $4; x->append($3); $$ = std::make_unique<CallRVal>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
     | T_id "(" ")"                                          { $$ = std::make_unique<CallRVal>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     ;
 
@@ -269,8 +274,16 @@ void yyerror(const char *msg) {
     exit(42);
 }
 
+void yy::parser::error(const location_type& l, const std::string& m) {
+  std::cerr << "\033[91mError: " << m << " at line "
+            << l.begin.line << "\033[0m" << std::endl;
+  std::exit(1);
+}
+
 int main() {
-    int result = yyparse();
+    yy::parser p;
+    int result = p.parse();
+    // ast->printAST();
     //if (result == 0) printf("Success.\n");
     return result;
 }

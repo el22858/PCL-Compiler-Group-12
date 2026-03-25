@@ -77,7 +77,7 @@ class Block : public Stmt {
     private:
         std::unique_ptr<StmtList> stmt_list;
     public:
-        Block(StmtList *sL = nullptr) : stmt_list(sL) {}
+        Block(std::unique_ptr<StmtList> sL = nullptr) : stmt_list(std::move(sL)) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Block(" << *stmt_list << ")"; }
         virtual void sem() override { stmt_list->sem(); }

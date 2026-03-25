@@ -1,9 +1,9 @@
 all: distclean pcl
 
-lexer.cpp: lexer.l
+lexer.cpp lexer.hpp: lexer.l
 	@flex $<
 
-lexer.o: lexer.cpp lexer.hpp parser.hpp ast.hpp
+lexer.o: lexer.cpp parser.hpp ast.hpp
 	@g++ -c -o lexer.o lexer.cpp
 
 parser.hpp parser.cpp: parser.y

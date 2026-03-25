@@ -10,7 +10,6 @@ extern vector<char> constChars;
 extern vector<int> constInts;
 extern vector<double> constReals;
 
-int yylex();
 void yyerror(const char *msg);
 
 #endif
