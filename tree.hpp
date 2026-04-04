@@ -7,7 +7,7 @@ class AST {
     private:
     public:
         virtual ~AST() = default;
-        virtual void sem() {}
+        virtual void sem() = 0;
         virtual void printAST(std::ostream &out) const = 0;        
 };
 

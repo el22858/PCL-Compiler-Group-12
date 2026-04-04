@@ -31,7 +31,7 @@ class StmtList : public Stmt {
                 for (const auto &x : stmt_list) {
                     if (!start) out << ", ";
                     start = false;
-                    if (x) out << *x;
+                    x->printAST(out);
                 }
             }
             out << ")";
@@ -43,7 +43,7 @@ class StmtList : public Stmt {
 
 
 class Expr : public AST {
-    private:
+    protected:
     public:
         Types type;
         bool typeCheck(Types t) { return type == t; }
@@ -64,7 +64,7 @@ class ExprList : public Expr {
             for (const auto &x : expr_list) {
                 if (!start) out << ", ";
                 start = false;
-                out << *x;
+                x->printAST(out);
             }
             out << ")";
         }
@@ -79,7 +79,10 @@ class Block : public Stmt {
     public:
         Block(std::unique_ptr<StmtList> sL = nullptr) : stmt_list(std::move(sL)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Block(" << *stmt_list << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Block(";
+            stmt_list->printAST(out);
+            out << ")"; }
         virtual void sem() override { stmt_list->sem(); }
 };
 
@@ -92,8 +95,14 @@ class ITE : public Stmt {
         ITE(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2 = nullptr) : expr(std::move(e)), stmt1(std::move(s1)), stmt2(std::move(s2)) {}
 
         virtual void printAST(std::ostream &out) const override {
-            out << "If(" << *expr << ", " << *stmt1;
-            if (stmt2 != nullptr) out << ", " << *stmt2;
+            out << "If(";
+            expr->printAST(out);
+            out << ", ";
+            stmt1->printAST(out);
+            if (stmt2 != nullptr) {
+                out << ", ";
+                stmt2->printAST(out);
+            }
             out << ")";
         }
         virtual void sem() override {
@@ -113,7 +122,13 @@ class While : public Stmt {
     public:
         While(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) : expr(std::move(e)), stmt(std::move(s)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "While(" << *expr << ", " << *stmt << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "While(";
+            expr->printAST(out);
+            out << ", ";
+            stmt->printAST(out);
+            out << ")";
+        }
         virtual void sem() override {
             expr->sem();
 
@@ -139,7 +154,11 @@ class UnOp : public RVal {
     public:
         UnOp(char *s, std::unique_ptr<Expr> e) : op(s), expr(std::move(e)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "UnOp(" << op << ", " << *expr << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "UnOp(" << op << ", ";
+            expr->printAST(out);
+            out << ")";
+        }
         virtual void sem() override {
             expr->sem();
 
@@ -162,7 +181,13 @@ class BinOp : public RVal {
     public:
         BinOp(std::unique_ptr<Expr> e1, char *s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), op(s), expr2(std::move(e2)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "BinOp(" << *expr1 << ", " << op << ", " << *expr2 << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "BinOp(";
+            expr1->printAST(out);
+            out << ", " << op << ", ";
+            expr2->printAST(out);
+            out << ")";
+        }
         virtual void sem() override {
             expr1->sem();
             expr2->sem();
@@ -204,6 +229,7 @@ class IntConst : public RVal {
         IntConst(int n) : val(n), type(TYPE_INTEGER) {}
 
         virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
+        virtual void sem() override {}
 };
 
 
@@ -215,6 +241,7 @@ class BoolConst : public RVal {
         BoolConst(bool b) : val(b), type(TYPE_BOOLEAN) {}
 
         virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
+        virtual void sem() override {}
 };
 
 
@@ -226,6 +253,7 @@ class RealConst : public RVal {
         RealConst(float f) : val(f), type(TYPE_REAL) {}
 
         virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
+        virtual void sem() override {}
 };
 
 class CharConst : public RVal {
@@ -236,15 +264,17 @@ class CharConst : public RVal {
         CharConst(char c) : val(c), type(TYPE_CHAR) {}
 
         virtual void printAST(std::ostream &out) const override { out << "CharConst(" << val << ")"; }
+        virtual void sem() override {}
 };
 
 
 class Nil : public RVal {
     private:
     public:
-        Nil() {}
+        Nil() { type = TYPE_NIL; }
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()";}
+        virtual void sem() override {}
 };
 
 
@@ -256,6 +286,7 @@ class StringLit : public LVal {
         StringLit(char *s) : val(s), type(TYPE_STRING) {}
 
         virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
+        virtual void sem() override {}
 };
 
 
@@ -282,17 +313,18 @@ class IdList : public AST {
     public:
         IdList(): idList() {}
 
-        void append(std::unique_ptr<Id> id) { idList.insert(idList.begin(), std::move(id)); }
+        void append(std::unique_ptr<Id> id) { idList.push_back(std::move(id)); }
         virtual void printAST(std::ostream &out) const override {
             out << "IdList(";
             bool start = true;
             for (const auto &id : idList) {
                 if (!start) out << ", ";
                 start = false;
-                out << *id;
+                id->printAST(out);
             }
             out << ")";
         }
+        virtual void sem() override { for (const auto &id : idList) id->sem(); }
 };
 
 
@@ -303,7 +335,14 @@ class IdLabel : public Stmt {
     public:
         IdLabel(std::unique_ptr<Id> i, std::unique_ptr<Stmt> s) : id(std::move(i)), stmt(std::move(s)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "IdLabel(" << *id << ", " << *stmt << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "IdLabel(";
+            id->printAST(out);
+            out << ", ";
+            stmt->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -314,13 +353,14 @@ class ArrayItem: public LVal {
     public:
         ArrayItem(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e) : lVal(std::move(l)), expr(std::move(e)) {}
 
-        virtual void printAST(std::ostream &out) const override {out << "ArrayItem(" << *lVal << ", " << *expr << ")";}
-        virtual void sem() override {
-            lVal->sem();
-            expr->sem();
-
-            
+        virtual void printAST(std::ostream &out) const override {
+            out << "ArrayItem(";
+            lVal->printAST(out);
+            out << ", ";
+            expr->printAST(out);
+            out << ")";
         }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -331,7 +371,14 @@ class Call : public Stmt {
     public:
         Call(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=nullptr) : id(std::move(i)), func(std::move(eL)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Call(" << *id << ", " << *func << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Call(";
+            id->printAST(out);
+            out << ", ";
+            func->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -342,7 +389,14 @@ class CallRVal : public RVal {
     public:
         CallRVal(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=nullptr) : id(std::move(i)), func(std::move(eL)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "CallRVal(" << *id << ", " << *func << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "CallRVal(";
+            id->printAST(out);
+            out << ", ";
+            func->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -356,13 +410,11 @@ class Dispose: public Stmt {
 
         virtual void printAST(std::ostream &out) const override {
             out << "Dispose(";
-            if (lVal) out << *lVal;
-            else if (exprPtr) out << *exprPtr;
+            if (lVal) lVal->printAST(out);
+            else if (exprPtr) exprPtr->printAST(out);
             out << ")";
         }
-        virtual void sem() override {
-
-        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -372,7 +424,12 @@ class Label: public Stmt {
     public:
         Label(std::unique_ptr<IdList> iL) : idList(std::move(iL)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Label(" << *idList << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Label(";
+            idList->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -386,10 +443,13 @@ class Assign: public Stmt {
 
         virtual void printAST(std::ostream &out) const override {
             out << "Assign(";
-            if (lval) out << *lval;
-            else if (exprPtr) out << *exprPtr;
-            out << ", " << *expr << ")";
+            if (lval) lval->printAST(out);
+            else if (exprPtr) exprPtr->printAST(out);
+            out << ", ";
+            expr->printAST(out);
+            out << ")";
         }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -398,6 +458,7 @@ class Return: public Stmt {
         Return() {};
 
         virtual void printAST(std::ostream &out) const override { out << "Return()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -411,11 +472,15 @@ class New: public Stmt {
 
         virtual void printAST(std::ostream &out) const override {
             out << "New(";
-            if (lVal) out << *lVal;
-            else if (exprPtr) out << *exprPtr;
-            if (expr) out << ", " << *expr;
+            if (lVal) lVal->printAST(out);
+            else if (exprPtr) exprPtr->printAST(out);
+            if (expr) {
+                out << ", ";
+                expr->printAST(out);
+            }
             out << ")";
         }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -425,7 +490,16 @@ class Goto: public Stmt {
     public:
         Goto(std::unique_ptr<Id> c) : id(std::move(c)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Goto(" << *id << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Goto(";
+            id->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override {
+            char *label = id->getName();
+            if (!st.isLabel(label)) yyerror("Label Not Found.\n");
+            else if (!st.validLabel(label)) yyerror("Label has no Statement.\n");
+        }
 };
 
 
@@ -436,8 +510,14 @@ class Decl : public AST {
     public:
         Decl(std::unique_ptr<IdList> iL, std::unique_ptr<Type> t) : idList(std::move(iL)), type(std::move(t)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Declaration(" << *idList << ", " << *type << ")"; }
-        virtual void sem() override {}
+        virtual void printAST(std::ostream &out) const override {
+            out << "Declaration(";
+            idList->printAST(out);
+            out << ", ";
+            type->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -454,7 +534,7 @@ class DeclList : public AST {
             for (const auto &d : decList) {
                 if (!start) out << ", ";
                 start = false;
-                out << *d;
+                d->printAST(out);
             }
             out << ")";
         }
@@ -472,7 +552,14 @@ class Formal : public AST {
     public:
     Formal(std::unique_ptr<IdList> iL, std::unique_ptr<Type> t) : idList(std::move(iL)), type(std::move(t)) {}
 
-    void printAST(std::ostream &out) const override { out << "Formal(" << *idList << ", " << *type << ")"; }
+    void printAST(std::ostream &out) const override {
+        out << "Formal(";
+        idList->printAST(out);
+        out << ", ";
+        type->printAST(out);
+        out << ")";
+    }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -489,7 +576,7 @@ class FormalList : public AST {
             for (const auto &f : formalList) {
                 if (!start) out << ", ";
                 start = false;
-                out << *f;
+                f->printAST(out);
             }
             out << ")";
         }
@@ -504,7 +591,14 @@ class Procedure : public Header {
     public:
         Procedure(std::unique_ptr<Id> i, std::unique_ptr<FormalList> fL=nullptr) : id(std::move(i)), formalList(std::move(fL)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Procedure(" << *id << ", " << *formalList << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Procedure(";
+            id->printAST(out);
+            out << ", ";
+            formalList->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -516,11 +610,16 @@ class Function : public Header {
     public:
         Function(std::unique_ptr<Id> i, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL=nullptr) : id(std::move(i)), type(std::move(t)), formalList(std::move(fL)) {}
 
-        virtual void printAST(std::ostream &out) const { out << "Function(" << *id << ", type=" << *type << ", " << *formalList << ")"; }
-        virtual void sem() override {
-            std::string s = id->getName();
+        virtual void printAST(std::ostream &out) const {
+            out << "Function(";
+            id->printAST(out);
+            out << ", type=";
+            type->printAST(out);
+            out << ", ";
+            formalList->printAST(out);
+            out << ")";
         }
-
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -539,10 +638,14 @@ class Local : public AST {
 
         virtual void printAST(std::ostream &out) const override {
             out << "Local(";
-            if (localType.compare("var") == 0) out << *dList;
-            else if (localType.compare("label") == 0) out << *lbl;
-            else if (localType.compare("forp") == 0) out << *hdr << ", " << *body;
-            else if (localType.compare("forward") == 0) out << *hdr;
+            if (localType.compare("var") == 0) dList->printAST(out);
+            else if (localType.compare("label") == 0) lbl->printAST(out);
+            else if (localType.compare("forp") == 0) {
+                hdr->printAST(out);
+                out << ", ";
+                body->printAST(out);
+            }
+            else if (localType.compare("forward") == 0) hdr->printAST(out);
             out << ")";
         }
         virtual void sem() override {
@@ -569,7 +672,7 @@ class LocalList : public AST {
             for (const auto &l : localList) {
                 if (!start) out << ", ";
                 start = false;
-                out << *l;
+                l->printAST(out);
             }
             out << ")";
         }
@@ -584,7 +687,13 @@ class Body : public Stmt {
     public:
         Body(std::unique_ptr<LocalList> l, std::unique_ptr<Block> b) : localList(std::move(l)), block(std::move(b)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Body(" << *localList << ", " << *block << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Body(";
+            localList->printAST(out);
+            out << ", ";
+            block->printAST(out);
+            out << ")";
+        }
         virtual void sem() override {
             st.enterScope();
             localList->sem();
@@ -600,16 +709,22 @@ class Reference : public RVal {
     public:
         Reference(std::unique_ptr<LVal> l) : lVal(std::move(l)) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Reference(" << *lVal << ")"; }
+        virtual void printAST(std::ostream &out) const override {
+            out << "Reference(";
+            lVal->printAST(out);
+            out << ")";
+        }
+        virtual void sem() override { /* ... */ }
 };
 
 
 class Result : public LVal {
     private:
     public:
-        Result() {}
+        Result() { type = TYPE_RES; }
 
         virtual void printAST(std::ostream &out) const override { out << "Result()"; }
+        virtual void sem() override {}
 };
 
 #endif

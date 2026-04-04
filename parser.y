@@ -137,8 +137,8 @@
 %%
 
 program : "program" T_id ";" body "." {
-        std::cout << *$4 <<"\n";
-        /* ast = $4; */
+        /* std::cout << *$4 <<"\n"; */
+        ast = $4;
         /* st.enterScope();
         $4->sem();
         st.exitScope(); */
@@ -283,7 +283,7 @@ void yy::parser::error(const location_type& l, const std::string& m) {
 int main() {
     yy::parser p;
     int result = p.parse();
-    // ast->printAST();
+    cout << *ast << "\n";
     //if (result == 0) printf("Success.\n");
     return result;
 }

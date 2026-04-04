@@ -5,12 +5,13 @@
 #include <memory>
 #include "tree.hpp"
 
-enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER};
+enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_NIL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER, TYPE_LABEL, TYPE_RES };
 
 class Type : public AST {
     private:
         Types val;
     public:
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -21,6 +22,7 @@ class Integer : public Type {
         Integer() : val(TYPE_INTEGER) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Integer()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -31,6 +33,7 @@ class String : public Type {
         String() : val(TYPE_STRING) {}
 
         virtual void printAST(std::ostream &out) const override { out << "String()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -41,6 +44,7 @@ class Char : public Type {
         Char() : val(TYPE_CHAR) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Const()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -51,6 +55,7 @@ class Real : public Type {
         Real() : val(TYPE_REAL) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Real()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -61,6 +66,7 @@ class Boolean : public Type {
         Boolean() : val(TYPE_BOOLEAN) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Boolean()"; }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -77,6 +83,7 @@ class Array : public Type {
             if (size > 0) out << "size=" << size << ", ";
             out << "type=" << *arType << ")";
         }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -88,6 +95,7 @@ class Pointer : public Type {
         Pointer(std::unique_ptr<Type> t) : val(TYPE_POINTER), pType(std::move(t)) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
+        virtual void sem() override { /* ... */ }
 };
 
 #endif
