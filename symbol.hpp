@@ -9,10 +9,10 @@
 #include "type.hpp"
 
 struct STEntry {
-    Types type;
+    std::unique_ptr<Type> type;
     int offset;
     STEntry() {}
-    STEntry(Types t, int o) : type(t), offset(o) {}
+    STEntry(std::unique_ptr<Type> t, int o) : type(std::move(t)), offset(o) {}
 };
 
 class FormalList;
@@ -22,24 +22,35 @@ class Scope {
     private:
         std::map<char *, STEntry> locals;
         std::map<char *, std::unique_ptr<FormalList>> params;
-        std::map<char *, Stmt *> lblStmt;
+        std::map<char *, std::unique_ptr<Stmt>> lblStmt;
         std::map<char *, bool> isForm, label;
         int offset;
     public:
         Scope() : locals() {}
         Scope(int o) : locals(), offset(o) {}
 
-        void insert(char *id, Types type) {
+        void insert(char *id, std::unique_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
-            locals[id] = STEntry(type, offset++);
+            locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = false;
+            label[id] = false;
+            params[id] = nullptr;
         }
 
-        void insertFormal(char *id, Types type, std::unique_ptr<FormalList> fL) {
+        void insertFormal(char *id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
-            locals[id] = STEntry(type, offset++);
+            locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = true;
+            label[id] = false;
             params[id] = std::move(fL);
+        }
+
+        void insertLabel(char *id, std::unique_ptr<Type> type) {
+            if (locals.find(id) != locals.end()) yyerror("Dafuq");
+            locals[id] = STEntry(std::move(type), offset++);
+            isForm[id] = false;
+            label[id] = true;
+            params[id] = nullptr;
         }
 
         STEntry* lookup(char *id) {
@@ -57,6 +68,7 @@ class Scope {
 
         bool isLabel(char *c) { return label[c]; }
         bool validLabel(char *c) { return (lblStmt.find(c) != lblStmt.end()); }
+        void insertLabelStmt(char *c, std::unique_ptr<Stmt> s) { lblStmt[c] = std::move(s); }
 };
 
 class SymbolTable {
@@ -65,8 +77,9 @@ class SymbolTable {
     public:
         SymbolTable() : scopes() {}
 
-        void insert(char *id, Types t) { scopes.back().insert(id, t); }
-        void insertFormal(char *id, Types t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, std::move(fL)); }
+        void insert(char *id, std::unique_ptr<Type> t) { scopes.back().insert(id, std::move(t)); }
+        void insertFormal(char *id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, std::move(t), std::move(fL)); }
+        void insertLabel(char *id, std::unique_ptr<Type> t) { scopes.back().insertLabel(id, std::move(t)); }
 
         STEntry* lookup(char* id) {
             for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
@@ -98,6 +111,7 @@ class SymbolTable {
 
         bool isLabel(char *c) { return scopes.back().isLabel(c); }
         bool validLabel(char *c) { return scopes.back().validLabel(c); }
+        void insertLabelStmt(char *c, std::unique_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, std::move(s)); }
 };
 
 extern SymbolTable st;

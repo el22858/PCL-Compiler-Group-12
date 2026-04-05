@@ -45,8 +45,9 @@ class StmtList : public Stmt {
 class Expr : public AST {
     protected:
     public:
-        Types type;
-        bool typeCheck(Types t) { return type == t; }
+        std::unique_ptr<Type> type;
+        virtual bool isRes() { return false; }
+        bool typeCheck(Types t) { return type->getType() == t; }
 };
 
 
@@ -110,7 +111,7 @@ class ITE : public Stmt {
             if (expr->typeCheck(TYPE_BOOLEAN)) {
                 stmt1->sem();
                 if (stmt2) stmt2->sem();
-            } // else yyerror("Expected boolean.");
+            } else yyerror("Expected boolean for ITE.");
         }
 };
 
@@ -133,7 +134,7 @@ class While : public Stmt {
             expr->sem();
 
             if (expr->typeCheck(TYPE_BOOLEAN)) stmt->sem();
-            // else yyerror("Expected boolean.");
+            else yyerror("Expected boolean for While loop.");
         }
 };
 
@@ -163,13 +164,13 @@ class UnOp : public RVal {
             expr->sem();
 
             if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0)) {
-                if (expr->typeCheck(TYPE_INTEGER)) type = TYPE_INTEGER;
-                else if (expr->typeCheck(TYPE_REAL)) type = TYPE_REAL;
-                // else yyerror("Expected number");
+                if (expr->typeCheck(TYPE_INTEGER)) type = std::make_unique<Integer>();
+                else if (expr->typeCheck(TYPE_REAL)) type = std::make_unique<Real>();
+                else yyerror("Expected number");
             } else if (strcmp(op, "not") == 0) {
-                if (expr->typeCheck(TYPE_BOOLEAN)) type = TYPE_BOOLEAN;
-                // else yyerror("Expected boolean.");
-            } // else yyerror("Unary Operator not recognized"); // Trash
+                if (expr->typeCheck(TYPE_BOOLEAN)) type = std::make_unique<Boolean>();
+                else yyerror("Expected boolean.");
+            } else yyerror("Unary Operator not recognized"); // Trash
         }
 };
 
@@ -194,28 +195,28 @@ class BinOp : public RVal {
 
             if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0) || (strcmp(op, "*") == 0)) {
                 if (expr1->typeCheck(TYPE_INTEGER)) {
-                    if (expr2->typeCheck(TYPE_INTEGER)) type = TYPE_INTEGER;
-                    else if (expr2->typeCheck(TYPE_REAL)) type = TYPE_REAL;
-                    // else yyerror("Expected int or real.");
+                    if (expr2->typeCheck(TYPE_INTEGER)) type = std::make_unique<Integer>();
+                    else if (expr2->typeCheck(TYPE_REAL)) type = std::make_unique<Real>();
+                    else yyerror("Expected int or real.");
                 } else if (expr1->typeCheck(TYPE_REAL)) {
-                    if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = TYPE_REAL;
-                    // else yyerror("Expected int or real.");
+                    if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = std::make_unique<Real>();
+                    else yyerror("Expected int or real.");
                 }
             } else if (strcmp(op, "/")) {
-                if ((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = TYPE_REAL;
-                // else yyerror("Expected int or real.");
+                if ((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_unique<Real>();
+                else yyerror("Expected int or real.");
             } else if ((strcmp(op, "div") == 0) || (strcmp(op, "mod") == 0)) {
-                if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = TYPE_INTEGER;
-                // else yyerror("Expected int.");
+                if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = std::make_unique<Integer>();
+                else yyerror("Expected int.");
             } else if ((strcmp(op, "and") == 0) || (strcmp(op, "or") == 0)) {
-                if ((expr1->typeCheck(TYPE_BOOLEAN) && (expr2->typeCheck(TYPE_BOOLEAN)))) type = TYPE_BOOLEAN;
-                // else yyerror("Expected boolean.");
+                if ((expr1->typeCheck(TYPE_BOOLEAN) && (expr2->typeCheck(TYPE_BOOLEAN)))) type = std::make_unique<Boolean>();
+                else yyerror("Expected boolean.");
             } else if ((strcmp(op, "<") == 0) || (strcmp(op, ">") == 0) || (strcmp(op, "<=") == 0) || (strcmp(op, ">=") == 0)) {
-                if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = TYPE_BOOLEAN;
-                // else yyerror("Expected int or real.");
+                if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_unique<Boolean>();
+                else yyerror("Expected int or real.");
             } else if ((strcmp(op, "=") == 0) || (strcmp(op, "<>") == 0)) {
-                if (expr1->type == expr2->type) type = TYPE_BOOLEAN;
-                // else yyerror("Type mismatch!");
+                if (expr1->type == expr2->type) type = std::make_unique<Boolean>();
+                else yyerror("Type mismatch!");
             }
         }
 };
@@ -225,11 +226,10 @@ class IntConst : public RVal {
     private:
         int val;
     public:
-        Types type;
-        IntConst(int n) : val(n), type(TYPE_INTEGER) {}
+        IntConst(int n) : val(n) {}
 
         virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<Integer>(); }
 };
 
 
@@ -237,11 +237,10 @@ class BoolConst : public RVal {
     private:
         bool val;
     public:
-        Types type;
-        BoolConst(bool b) : val(b), type(TYPE_BOOLEAN) {}
+        BoolConst(bool b) : val(b) {}
 
         virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<Boolean>(); }
 };
 
 
@@ -249,32 +248,30 @@ class RealConst : public RVal {
     private:
         float val;
     public:
-        Types type;
-        RealConst(float f) : val(f), type(TYPE_REAL) {}
+        RealConst(float f) : val(f) {}
 
         virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<Real>(); }
 };
 
 class CharConst : public RVal {
     private:
         char val;
     public:
-        Types type;
-        CharConst(char c) : val(c), type(TYPE_CHAR) {}
+        CharConst(char c) : val(c) {}
 
         virtual void printAST(std::ostream &out) const override { out << "CharConst(" << val << ")"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::unique_ptr<Char>(); }
 };
 
 
 class Nil : public RVal {
     private:
     public:
-        Nil() { type = TYPE_NIL; }
+        Nil() {}
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()";}
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<TypeNil>(); }
 };
 
 
@@ -282,11 +279,10 @@ class StringLit : public LVal {
     private:
         char *val;
     public:
-        Types type;
-        StringLit(char *s) : val(s), type(TYPE_STRING) {}
+        StringLit(char *s) : val(s) {}
 
         virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<String>(); }
 };
 
 
@@ -299,7 +295,7 @@ class Id : public LVal {
 
         virtual void printAST(std::ostream &out) const override { out << "Id(" << id << ")"; }
         virtual void sem() override {
-            type = st.lookup(id)->type;
+            type = std::move(st.lookup(id)->type);
             STEntry *e = st.lookup(id);
             offset = e->offset;
         }
@@ -312,6 +308,8 @@ class IdList : public AST {
         std::vector<std::unique_ptr<Id>> idList;
     public:
         IdList(): idList() {}
+
+        std::vector<std::unique_ptr<Id>> getList() { return idList; }
 
         void append(std::unique_ptr<Id> id) { idList.push_back(std::move(id)); }
         virtual void printAST(std::ostream &out) const override {
@@ -342,7 +340,11 @@ class IdLabel : public Stmt {
             stmt->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            char *c = id->getName();
+            if (!st.isLabel(c)) yyerror("Not a label.");
+            else st.insertLabelStmt(c, std::move(stmt));
+        }
 };
 
 
@@ -360,7 +362,18 @@ class ArrayItem: public LVal {
             expr->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            lVal->sem();
+            if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
+            
+            expr->sem();
+            if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
+            
+            if (!(lVal->typeCheck(TYPE_ARRAY))) yyerror("Expected array.");
+            else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
+
+            type = std::move(lVal->type);
+        }
 };
 
 
@@ -429,7 +442,7 @@ class Label: public Stmt {
             idList->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override { for (const auto &id : idList->getList()) st.insertLabel(id->getName(), std::make_unique<TypeLbl>()); }
 };
 
 
@@ -458,7 +471,7 @@ class Return: public Stmt {
         Return() {};
 
         virtual void printAST(std::ostream &out) const override { out << "Return()"; }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {}
 };
 
 
@@ -517,7 +530,7 @@ class Decl : public AST {
             type->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getName(), std::move(type)); }
 };
 
 
@@ -694,12 +707,7 @@ class Body : public Stmt {
             block->printAST(out);
             out << ")";
         }
-        virtual void sem() override {
-            st.enterScope();
-            localList->sem();
-            block->sem();
-            st.exitScope();
-        }
+        virtual void sem() override { /* ... */ }
 };
 
 
@@ -714,17 +722,38 @@ class Reference : public RVal {
             lVal->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            lVal->sem();
+            if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
+            type = std::make_unique<Pointer>(std::move(lVal->type));
+        }
 };
 
 
 class Result : public LVal {
     private:
     public:
-        Result() { type = TYPE_RES; }
+        Result() {}
+
+        virtual bool isRes() override { return true; }
 
         virtual void printAST(std::ostream &out) const override { out << "Result()"; }
-        virtual void sem() override {}
+        virtual void sem() override { type = std::make_unique<TypeRes>(); }
+};
+
+class Deref : public LVal {
+    private:
+        std::unique_ptr<Expr> expr;
+    public:
+        Deref(std::unique_ptr<Expr> e) : expr(std::move(e)) {}
+
+        virtual void printAST(ostream &out) const override { out << "Deref(" << *expr << ")"; }
+        virtual void sem() override {
+            expr->sem();
+            if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
+            if (!(expr->typeCheck(TYPE_POINTER))) yyerror("Expression is not a pointer.");
+            type = expr->type->getPointerType();
+        }
 };
 
 #endif

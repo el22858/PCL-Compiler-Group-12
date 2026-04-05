@@ -132,7 +132,6 @@
 %left<char *> "(" ")" "[" "]" "and" "not" "<=" ">=" "<" ">" "<>"
 %right<char *> "@" "^"
 
-%expect 1
 
 %%
 
@@ -198,7 +197,6 @@ stmt_list :                                                 { $$ = std::make_uni
 
 stmt :                                                      { $$ = nullptr; }
     | lVal ":=" expr                                        { $$ = std::make_unique<Assign>($1, $3); }
-    | expr "^" ":=" expr                                    { $$ = std::make_unique<Assign>($1, $4); }
     | block                                                 { $$ = $1; }
     | call                                                  { $$ = $1; }
     | "if" expr "then" stmt                                 { $$ = std::make_unique<ITE>($2, $4); }
@@ -208,13 +206,9 @@ stmt :                                                      { $$ = nullptr; }
     | "goto" T_id                                           { $$ = std::make_unique<Goto>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     | "return"                                              { $$ = std::make_unique<Return>(); }
     | "new" "[" expr "]" lVal                               { $$ = std::make_unique<New>($5, $3); }
-    | "new" "[" expr "]" expr "^"                           { $$ = std::make_unique<New>($5, $3); }
     | "new" lVal                                            { $$ = std::make_unique<New>($2); }
-    | "new" expr "^"                                        { $$ = std::make_unique<New>($2); }
     | "dispose" "[" "]" lVal                                { $$ = std::make_unique<Dispose>($4); }
-    | "dispose" "[" "]" expr "^"                            { $$ = std::make_unique<Dispose>($4); }
     | "dispose" lVal                                        { $$ = std::make_unique<Dispose>($2); }
-    | "dispose" expr "^"                                    { $$ = std::make_unique<Dispose>($2); }
     ;
 
 expr : lVal                                                 { $$ = $1; }
@@ -229,6 +223,7 @@ lVal : T_id                                                 { $$ = std::make_uni
     | string_lit                                            { $$ = std::make_unique<StringLit>(stringLits.back()); stringLits.pop_back(); }
     | lVal "[" expr "]"                                     { $$ = std::make_unique<ArrayItem>($1, $3); }
     | "(" lVal ")"                                          { $$ = $2; }
+    | expr "^"                                              { $$ = std::make_unique<Deref>($1); }
     ;
 rVal : integer_const                                        { $$ = std::make_unique<IntConst>(constInts.back()); constInts.pop_back(); }
     | "true"                                                { $$ = std::make_unique<BoolConst>(true); }

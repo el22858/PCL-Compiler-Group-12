@@ -12,6 +12,8 @@ class Type : public AST {
         Types val;
     public:
         virtual void sem() override { /* ... */ }
+        Types getType() { return val; }
+        virtual std::unique_ptr<Type> getPointerType() { return nullptr; }
 };
 
 
@@ -94,7 +96,38 @@ class Pointer : public Type {
     public:
         Pointer(std::unique_ptr<Type> t) : val(TYPE_POINTER), pType(std::move(t)) {}
 
+        virtual std::unique_ptr<Type> getPointerType() override { return std::move(pType); }
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
+        virtual void sem() override { /* ... */ }
+};
+
+class TypeNil : public Type {
+    private:
+        Types val;
+    public:
+        TypeNil() : val(TYPE_NIL) {}
+
+        virtual void printAST(std::ostream &out) const override { out << "TypeNil()"; }
+        virtual void sem() override { /* ... */ }
+};
+
+class TypeRes : public Type {
+    private:
+        Types val;
+    public:
+        TypeRes() : val(TYPE_RES) {}
+
+        virtual void printAST(std::ostream &out) const override { out << "TypeRes()"; }
+        virtual void sem() override { /* ... */ }
+};
+
+class TypeLbl : public Type {
+    private:
+        Types val;
+    public:
+        TypeLbl() : val(TYPE_LABEL) {}
+
+        virtual void printAST(std::ostream &out) const override { out << "TypeLabel()"; }
         virtual void sem() override { /* ... */ }
 };
 
