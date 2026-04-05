@@ -5,7 +5,7 @@
 #include <memory>
 #include "tree.hpp"
 
-enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_NIL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER, TYPE_LABEL, TYPE_RES };
+enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_NIL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER, TYPE_LABEL, TYPE_RES, TYPE_PROC };
 
 class Type : public AST {
     private:
@@ -128,6 +128,16 @@ class TypeLbl : public Type {
         TypeLbl() : val(TYPE_LABEL) {}
 
         virtual void printAST(std::ostream &out) const override { out << "TypeLabel()"; }
+        virtual void sem() override { /* ... */ }
+};
+
+class TypeProc : public Type {
+    private:
+        Types val;
+    public:
+        TypeProc() : val(TYPE_PROC) {}
+
+        virtual void printAST(std::ostream &out) const override { out << "TypeProcedure()"; }
         virtual void sem() override { /* ... */ }
 };
 

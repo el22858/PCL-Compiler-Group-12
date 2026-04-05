@@ -264,11 +264,19 @@ class CharConst : public RVal {
         virtual void sem() override { type = std::unique_ptr<Char>(); }
 };
 
-
-class Nil : public RVal {
+class NilLVal : public LVal {
     private:
     public:
-        Nil() {}
+        NilLVal() {}
+
+        virtual void printAST(std::ostream &out) const override { out << "Nil()";}
+        virtual void sem() override { type = std::make_unique<TypeNil>(); }
+};
+
+class NilRVal : public RVal {
+    private:
+    public:
+        NilRVal() {}
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()";}
         virtual void sem() override { type = std::make_unique<TypeNil>(); }
@@ -417,9 +425,10 @@ class Dispose: public Stmt {
     private:
         std::unique_ptr<LVal> lVal;
         std::unique_ptr<Expr> exprPtr;
+        bool bracket;
     public:
-        Dispose(std::unique_ptr<LVal> l) : lVal(std::move(l)) { exprPtr = nullptr; }
-        Dispose(std::unique_ptr<Expr> e) : exprPtr(std::move(e)) { lVal = nullptr; }
+        Dispose(std::unique_ptr<LVal> l, bool b) : lVal(std::move(l)), bracket(b) { exprPtr = nullptr; }
+        Dispose(std::unique_ptr<Expr> e, bool b) : exprPtr(std::move(e)), bracket(b) { lVal = nullptr; }
 
         virtual void printAST(std::ostream &out) const override {
             out << "Dispose(";
@@ -427,7 +436,25 @@ class Dispose: public Stmt {
             else if (exprPtr) exprPtr->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            if (lVal && !exprPtr){
+                lVal->sem();
+                if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
+                if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
+                /* ... */
+                if (bracket) {}
+
+                lVal = std::move(std::make_unique<NilLVal>());
+            } else if (!lVal && exprPtr) {
+                exprPtr->sem();
+                if (exprPtr->typeCheck(TYPE_RES)) exprPtr->type = std::move(st.lookup("result")->type);
+                if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
+                /* ... */
+
+                if (bracket) {}
+                exprPtr = std::move(std::make_unique<NilLVal>());
+            }
+        }
 };
 
 
@@ -555,7 +582,10 @@ class DeclList : public AST {
 };
 
 
-class Header : public AST {};
+class Header : public AST {
+    public:
+        virtual void semForward() {}
+};
 
 
 class Formal : public AST {
@@ -572,7 +602,7 @@ class Formal : public AST {
         type->printAST(out);
         out << ")";
     }
-        virtual void sem() override { /* ... */ }
+    virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getName(), std::move(type)); }
 };
 
 
@@ -611,7 +641,16 @@ class Procedure : public Header {
             formalList->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            if (st.forwarded(id->getName())) {
+                st.backward(id->getName());
+                /* Lacks check on whether the parameters are correct */
+            }
+            else st.insertFormal(id->getName(), std::make_unique<TypeProc>(), std::move(formalList));
+            // st.enterScope();
+            // formalList->sem();
+        }
+        virtual void semForward() override { st.insertFormalForward(id->getName(), std::make_unique<TypeProc>(), std::move(formalList)); }
 };
 
 
@@ -632,7 +671,17 @@ class Function : public Header {
             formalList->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            if (st.forwarded(id->getName())) {
+                st.backward(id->getName());
+                /* Lacks check on whether the parameters are correct */
+            }
+            else st.insertFormal(id->getName(), std::move(type), std::move(formalList));
+            // st.enterScope();
+            // formalList->sem();
+        }
+        virtual void semForward() override { st.insertFormalForward(id->getName(), std::move(type), std::move(formalList)); }
+
 };
 
 
@@ -667,7 +716,8 @@ class Local : public AST {
             else if (localType.compare("forp")) {
                 hdr->sem();
                 body->sem();
-            } else if (localType.compare("forward")) hdr->sem();
+                // st.exitScope();
+            } else if (localType.compare("forward")) hdr->semForward();
         }
 };
 
@@ -707,7 +757,12 @@ class Body : public Stmt {
             block->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual void sem() override {
+            st.enterScope();
+            localList->sem();
+            block->sem();
+            st.exitScope();
+        }
 };
 
 

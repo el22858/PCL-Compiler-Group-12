@@ -207,8 +207,8 @@ stmt :                                                      { $$ = nullptr; }
     | "return"                                              { $$ = std::make_unique<Return>(); }
     | "new" "[" expr "]" lVal                               { $$ = std::make_unique<New>($5, $3); }
     | "new" lVal                                            { $$ = std::make_unique<New>($2); }
-    | "dispose" "[" "]" lVal                                { $$ = std::make_unique<Dispose>($4); }
-    | "dispose" lVal                                        { $$ = std::make_unique<Dispose>($2); }
+    | "dispose" "[" "]" lVal                                { $$ = std::make_unique<Dispose>($4, true); }
+    | "dispose" lVal                                        { $$ = std::make_unique<Dispose>($2, false); }
     ;
 
 expr : lVal                                                 { $$ = $1; }
