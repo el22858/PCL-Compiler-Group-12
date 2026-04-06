@@ -36,9 +36,24 @@ class StmtList : public Stmt {
             }
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "StatementList(";
+            bool start = true;
+
+            if (stmt_list.size() > 0) {
+                for (const auto &x : stmt_list) {
+                    if (!start) res += ", ";
+                    start = false;
+                    res += x->getName();
+                }
+            }
+            res += ")";
+            return res;
+        }
         virtual void sem() override { for (auto &s : stmt_list) s->sem(); }
 
-        void append(std::unique_ptr<Stmt> s) { stmt_list.insert(stmt_list.begin(), std::move(s)); }
+        void append(std::unique_ptr<Stmt> s) { /*stmt_list.insert(stmt_list.begin(), std::move(s));*/ stmt_list.push_back(std::move(s)); }
+        void appendAtStart(std::unique_ptr<Stmt> s) { stmt_list.insert(stmt_list.begin(), std::move(s)); }
 };
 
 
@@ -57,7 +72,8 @@ class ExprList : public Expr {
     public:
         ExprList() : expr_list() {}
 
-        void append(std::unique_ptr<Expr> e) { expr_list.insert(expr_list.begin(), std::move(e)); }
+        void append(std::unique_ptr<Expr> e) { expr_list.push_back(std::move(e)); }
+        void appendAtStart(std::unique_ptr<Expr> e) { expr_list.insert(expr_list.begin(), std::move(e)); }
         virtual void printAST(std::ostream &out) const override {
             out << "ExpressionList(";
             bool start = true;
@@ -69,6 +85,19 @@ class ExprList : public Expr {
             }
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "ExpressionList(";
+            bool start = true;
+
+            for (const auto &x : expr_list) {
+                if (!start) res += ", ";
+                start = false;
+                res += x->getName();
+            }
+            res += ")";
+            return res;
+        }
+        std::vector<std::unique_ptr<Expr>> const& getList() { return expr_list; }
 
         virtual void sem() override { for (auto &e : expr_list) e->sem(); }
 };
@@ -83,7 +112,14 @@ class Block : public Stmt {
         virtual void printAST(std::ostream &out) const override {
             out << "Block(";
             stmt_list->printAST(out);
-            out << ")"; }
+            out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "Block(";
+            res += stmt_list->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override { stmt_list->sem(); }
 };
 
@@ -105,6 +141,18 @@ class ITE : public Stmt {
                 stmt2->printAST(out);
             }
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "If(";
+            res += expr->getName();
+            res += ", ";
+            res += stmt1->getName();
+            if (stmt2) {
+                res += ", ";
+                res += stmt2->getName();
+            }
+            res += ")";
+            return res;
         }
         virtual void sem() override {
             expr->sem();
@@ -130,6 +178,14 @@ class While : public Stmt {
             stmt->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "While(";
+            res += expr->getName();
+            res += ", ";
+            res += stmt->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override {
             expr->sem();
 
@@ -150,15 +206,23 @@ class LVal: public Expr {
 
 class UnOp : public RVal {
     private:
-        char *op;
+        char* op;
         std::unique_ptr<Expr> expr;
     public:
-        UnOp(char *s, std::unique_ptr<Expr> e) : op(s), expr(std::move(e)) {}
+        UnOp(char* s, std::unique_ptr<Expr> e) : op(s), expr(std::move(e)) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "UnOp(" << op << ", ";
             expr->printAST(out);
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "UnOp(";
+            res += op;
+            res += ", ";
+            res += expr->getName();
+            res += ")";
+            return res;
         }
         virtual void sem() override {
             expr->sem();
@@ -178,9 +242,9 @@ class UnOp : public RVal {
 class BinOp : public RVal {
     private:
         std::unique_ptr<Expr> expr1, expr2;
-        char *op;
+        char* op;
     public:
-        BinOp(std::unique_ptr<Expr> e1, char *s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), op(s), expr2(std::move(e2)) {}
+        BinOp(std::unique_ptr<Expr> e1, char* s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), op(s), expr2(std::move(e2)) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "BinOp(";
@@ -189,6 +253,16 @@ class BinOp : public RVal {
             expr2->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "BinOp(";
+            res += expr1->getName();
+            res += ", ";
+            res += op;
+            res += ", ";
+            res += expr2->getName();
+            res += ")";
+            return res;
+        } 
         virtual void sem() override {
             expr1->sem();
             expr2->sem();
@@ -229,6 +303,7 @@ class IntConst : public RVal {
         IntConst(int n) : val(n) {}
 
         virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
+        virtual std::string getName() const override { return "IntConst(" + std::to_string(val) + ")"; }
         virtual void sem() override { type = std::make_unique<Integer>(); }
 };
 
@@ -240,6 +315,7 @@ class BoolConst : public RVal {
         BoolConst(bool b) : val(b) {}
 
         virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
+        virtual std::string getName() const override { return (val) ? "BoolConst(true)" : "BoolConst(false)" ; }
         virtual void sem() override { type = std::make_unique<Boolean>(); }
 };
 
@@ -251,6 +327,7 @@ class RealConst : public RVal {
         RealConst(float f) : val(f) {}
 
         virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
+        virtual std::string getName() const override { return "RealConst(" + std::to_string(val) + ")"; }
         virtual void sem() override { type = std::make_unique<Real>(); }
 };
 
@@ -261,6 +338,7 @@ class CharConst : public RVal {
         CharConst(char c) : val(c) {}
 
         virtual void printAST(std::ostream &out) const override { out << "CharConst(" << val << ")"; }
+        virtual std::string getName() const override { return "CharConst(" + val + ')'; }
         virtual void sem() override { type = std::unique_ptr<Char>(); }
 };
 
@@ -269,7 +347,8 @@ class NilLVal : public LVal {
     public:
         NilLVal() {}
 
-        virtual void printAST(std::ostream &out) const override { out << "Nil()";}
+        virtual void printAST(std::ostream &out) const override { out << "Nil()"; }
+        virtual std::string getName() const override { return "Nil()"; }
         virtual void sem() override { type = std::make_unique<TypeNil>(); }
 };
 
@@ -279,35 +358,38 @@ class NilRVal : public RVal {
         NilRVal() {}
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()";}
+        virtual std::string getName() const override { return "Nil()"; }
         virtual void sem() override { type = std::make_unique<TypeNil>(); }
 };
 
 
 class StringLit : public LVal {
     private:
-        char *val;
+        std::string val;
     public:
-        StringLit(char *s) : val(s) {}
+        StringLit(std::string s) : val(s) {}
 
         virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
+        virtual std::string getName() const override { return "StringLit(" + val + ")"; } 
         virtual void sem() override { type = std::make_unique<String>(); }
 };
 
 
 class Id : public LVal {
     private:
-        char *id;
+        std::string id;
         int offset;
     public:
-        Id(char *s) : id(s), offset(-1) {}
+        Id(std::string s) : id(s), offset(-1) {}
 
         virtual void printAST(std::ostream &out) const override { out << "Id(" << id << ")"; }
+        virtual std::string getName() const override { return "Id(" + id + ")"; }
         virtual void sem() override {
             type = std::move(st.lookup(id)->type);
             STEntry *e = st.lookup(id);
             offset = e->offset;
         }
-        char* getName() { return id; }
+        std::string getId() { return id; }
 };
 
 
@@ -317,18 +399,32 @@ class IdList : public AST {
     public:
         IdList(): idList() {}
 
-        std::vector<std::unique_ptr<Id>> getList() { return idList; }
+        std::vector<std::unique_ptr<Id>> const& getList() { return idList; }
 
         void append(std::unique_ptr<Id> id) { idList.push_back(std::move(id)); }
+        void appendAtStart(std::unique_ptr<Id> id) { idList.insert(idList.begin(), std::move(id)); }
         virtual void printAST(std::ostream &out) const override {
             out << "IdList(";
             bool start = true;
+
             for (const auto &id : idList) {
                 if (!start) out << ", ";
                 start = false;
                 id->printAST(out);
             }
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "IdList(";
+            bool start = true;
+
+            for (const auto &id : idList) {
+                if (!start) res += ", ";
+                start = false;
+                res += id->getName();
+            }
+            res += ")";
+            return res;
         }
         virtual void sem() override { for (const auto &id : idList) id->sem(); }
 };
@@ -348,8 +444,16 @@ class IdLabel : public Stmt {
             stmt->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "IdLabel(";
+            res += id->getName();
+            res += ", ";
+            res += stmt->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override {
-            char *c = id->getName();
+            std::string c = id->getId();
             if (!st.isLabel(c)) yyerror("Not a label.");
             else st.insertLabelStmt(c, std::move(stmt));
         }
@@ -370,6 +474,14 @@ class ArrayItem: public LVal {
             expr->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "ArrayItem(";
+            res += lVal->getName();
+            res += ", ";
+            res += expr->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override {
             lVal->sem();
             if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
@@ -382,6 +494,72 @@ class ArrayItem: public LVal {
 
             type = std::move(lVal->type);
         }
+};
+
+
+class Formal : public AST {
+    private:
+        std::unique_ptr<IdList> idList;
+        std::unique_ptr<Type> type;
+    public:
+    Formal(std::unique_ptr<IdList> iL, std::unique_ptr<Type> t) : idList(std::move(iL)), type(std::move(t)) {}
+
+    virtual void printAST(std::ostream &out) const override {
+        out << "Formal(";
+        idList->printAST(out);
+        out << ", ";
+        type->printAST(out);
+        out << ")";
+    }
+    virtual std::string getName() const override {
+        std::string res = "Formal(";
+        res += idList->getName();
+        res += ", ";
+        res += type->getName();
+        res += ")";
+        return res;
+    }
+    std::vector<std::unique_ptr<Id>> const& getIdList() { return idList->getList(); }
+    std::unique_ptr<Type> getType() { return std::move(type); }
+    virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getId(), std::move(type)); }
+};
+
+
+class FormalList : public AST {
+    private:
+        std::vector<std::unique_ptr<Formal>> formalList;
+    public:
+        FormalList() : formalList() {}
+
+        std::vector<std::unique_ptr<Formal>> const& getList() { return formalList; }
+        virtual bool isEmpty() { return formalList.empty(); }
+
+        void append(std::unique_ptr<Formal> f) { formalList.push_back(std::move(f)); }
+        void appendAtStart(std::unique_ptr<Formal> f) { formalList.insert(formalList.begin(), std::move(f)); }
+        virtual void printAST(std::ostream &out) const override {
+            out << "FormalList(";
+            bool start = true;
+
+            for (const auto &f : formalList) {
+                if (!start) out << ", ";
+                start = false;
+                f->printAST(out);
+            }
+            out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "FormalList(";
+            bool start = true;
+
+            for (const auto &f : formalList) {
+                if (!start) res += ", ";
+                start = false;
+                res += f->getName();
+            }
+            res += ")";
+            return res;
+        }
+        virtual void sem() override { for (auto &f : formalList) f->sem(); }
 };
 
 
@@ -399,7 +577,40 @@ class Call : public Stmt {
             func->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual std::string getName() const override {
+            std::string res = "Call(";
+            res += id->getName();
+            res += ", ";
+            res += func->getName();
+            res += ")";
+            return res;
+        }
+        virtual void sem() override {
+            if (func) func->sem();
+
+            std::string funcName = id->getId();
+            st.lookup(funcName); /* Will throw error if it doesn't exist */
+            if (!st.isFormal(funcName)) yyerror("Can't be called.");
+
+            std::unique_ptr<FormalList> fL;
+            fL = st.getParams(funcName);
+            
+            int i = 0, expArgs = 0, actArgs = 0;
+            if (!(fL->isEmpty())) {
+                for (const auto &f : fL->getList()) expArgs += f->getIdList().size();
+            }
+            if (func) actArgs = func->getList().size();
+            if (expArgs != actArgs) yyerror("Incorrect number of arguments given.");
+
+            if (!(fL->isEmpty())) {
+                for (const auto &f : fL->getList()) {
+                    int k = f->getIdList().size();
+                    for (int j=0; j<k; j++) {
+                        if ((f->getType()->getType()) != (func->getList()[i++]->type->getType())) yyerror("Type mismatch.");
+                    }
+                }
+            }
+        }
 };
 
 
@@ -417,43 +628,71 @@ class CallRVal : public RVal {
             func->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual std::string getName() const override {
+            std::string res = "CallRVal(";
+            res += id->getName();
+            res += ", ";
+            res += func->getName();
+            res += ")";
+            return res;
+        }
+        virtual void sem() override {
+            if (func) func->sem();
+
+            std::string funcName = id->getId();
+            st.lookup(funcName); /* Will throw error if it doesn't exist */
+            if (!st.isFormal(funcName)) yyerror("Can't be called.");
+
+            std::unique_ptr<FormalList> fL;
+            fL = st.getParams(funcName);
+            
+            int i = 0, expArgs = 0, actArgs = 0;
+            if (!(fL->isEmpty())) {
+                for (const auto &f : fL->getList()) expArgs += f->getIdList().size();
+            }
+            if (func) actArgs = func->getList().size();
+            if (expArgs != actArgs) yyerror("Incorrect number of arguments given.");
+
+            if (!(fL->isEmpty())) {
+                for (const auto &f : fL->getList()) {
+                    int k = f->getIdList().size();
+                    for (int j=0; j<k; j++) {
+                        if ((f->getType()->getType()) != (func->getList()[i++]->type->getType())) yyerror("Type mismatch.");
+                    }
+                }
+            }
+            type = std::move(st.lookup(funcName)->type);
+        }
 };
 
 
 class Dispose: public Stmt {
     private:
         std::unique_ptr<LVal> lVal;
-        std::unique_ptr<Expr> exprPtr;
         bool bracket;
     public:
-        Dispose(std::unique_ptr<LVal> l, bool b) : lVal(std::move(l)), bracket(b) { exprPtr = nullptr; }
-        Dispose(std::unique_ptr<Expr> e, bool b) : exprPtr(std::move(e)), bracket(b) { lVal = nullptr; }
+        Dispose(std::unique_ptr<LVal> l, bool b) : lVal(std::move(l)), bracket(b) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "Dispose(";
-            if (lVal) lVal->printAST(out);
-            else if (exprPtr) exprPtr->printAST(out);
+            lVal->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "Dispose(";
+            res += lVal->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override {
-            if (lVal && !exprPtr){
-                lVal->sem();
-                if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
-                if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
-                /* ... */
-                if (bracket) {}
+            lVal->sem();
+            if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
+            if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
+            if (!st.isNew(lVal->getName())) yyerror("Cannot dispose of non-new value.");
+            
+            if (bracket && (lVal->type->getPointerType()->getType() != TYPE_ARRAY)) yyerror("Something something pointer to array.");
 
-                lVal = std::move(std::make_unique<NilLVal>());
-            } else if (!lVal && exprPtr) {
-                exprPtr->sem();
-                if (exprPtr->typeCheck(TYPE_RES)) exprPtr->type = std::move(st.lookup("result")->type);
-                if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
-                /* ... */
-
-                if (bracket) {}
-                exprPtr = std::move(std::make_unique<NilLVal>());
-            }
+            lVal = std::move(std::make_unique<NilLVal>());
         }
 };
 
@@ -469,27 +708,54 @@ class Label: public Stmt {
             idList->printAST(out);
             out << ")";
         }
-        virtual void sem() override { for (const auto &id : idList->getList()) st.insertLabel(id->getName(), std::make_unique<TypeLbl>()); }
+        virtual std::string getName() const override {
+            std::string res = "Label(";
+            res += idList->getName();
+            res += ")";
+            return res;
+        }
+        virtual void sem() override { for (const auto &id : idList->getList()) st.insertLabel(id->getId(), std::make_unique<TypeLbl>()); }
 };
 
 
 class Assign: public Stmt {
     private:
         std::unique_ptr<LVal> lval;
-        std::unique_ptr<Expr> expr, exprPtr;
+        std::unique_ptr<Expr> expr;
     public:
-        Assign(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e) : lval(std::move(l)), expr(std::move(e)) { exprPtr = nullptr; }
-        Assign(std::unique_ptr<Expr> p, std::unique_ptr<Expr> e) : exprPtr(std::move(p)), expr(std::move(e)) { lval = nullptr; }
-
+        Assign(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e) : lval(std::move(l)), expr(std::move(e)) {}
+       
         virtual void printAST(std::ostream &out) const override {
             out << "Assign(";
             if (lval) lval->printAST(out);
-            else if (exprPtr) exprPtr->printAST(out);
             out << ", ";
             expr->printAST(out);
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual std::string getName() const override {
+            std::string res = "Assign(";
+            res += lval->getName();
+            res += ", ";
+            res += expr->getName();
+            res += ")";
+            return res;
+        }
+        virtual void sem() override {
+            lval->sem();
+            expr->sem();
+
+            if (lval->isRes()) {
+                if (!(st.hasRes())) st.insert("result", std::move(expr->type));
+
+                std::unique_ptr<Type> resType = std::move(st.lookup(st.getParent())->type);
+                if (resType->getType() == TYPE_PROC) yyerror("Procedure shouldn't have a result statement.");
+
+                if (expr->type->getType() == TYPE_ARRAY) yyerror("Function cannot return an array.");
+                if (expr->type->getType() != resType->getType()) yyerror("Type mismatch.");
+                
+                lval->type = std::move(expr->type);
+            } else if (lval->type->getType() != expr->type->getType()) yyerror("Assignment error.");
+        }
 };
 
 
@@ -498,6 +764,7 @@ class Return: public Stmt {
         Return() {};
 
         virtual void printAST(std::ostream &out) const override { out << "Return()"; }
+        virtual std::string getName() const override { return "Return()"; }
         virtual void sem() override {}
 };
 
@@ -505,22 +772,46 @@ class Return: public Stmt {
 class New: public Stmt {
     private:
         std::unique_ptr<LVal> lVal;
-        std::unique_ptr<Expr> expr, exprPtr;
+        std::unique_ptr<Expr> expr;
     public:
-        New(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e=nullptr) : lVal(std::move(l)), expr(std::move(e)) { exprPtr = nullptr; }
-        New(std::unique_ptr<Expr> p, std::unique_ptr<Expr> e=nullptr) : exprPtr(std::move(p)), expr(std::move(e)) { lVal = nullptr; }
+        New(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e=nullptr) : lVal(std::move(l)), expr(std::move(e)) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "New(";
             if (lVal) lVal->printAST(out);
-            else if (exprPtr) exprPtr->printAST(out);
             if (expr) {
                 out << ", ";
                 expr->printAST(out);
             }
             out << ")";
         }
-        virtual void sem() override { /* ... */ }
+        virtual std::string getName() const override {
+            std::string res = "New(";
+            res += lVal->getName();
+            if (expr) {
+                res += ", ";
+                res += expr->getName();
+            }
+            res += ")";
+            return res;
+        }
+        virtual void sem() override {
+            lVal->sem();
+
+            if (lVal->type->getType() == TYPE_RES) lVal->type = std::move(st.lookup("result")->type);
+            if (lVal->type->getType() != TYPE_POINTER) yyerror("Expected pointer for new.");
+            
+            if (expr) {
+                if (lVal->type->getPointerType()->getType() != TYPE_ARRAY) yyerror("Expected pointer to array");
+
+                expr->sem();
+
+                if (expr->type->getType() == TYPE_RES) expr->type = std::move(st.lookup("result")->type);
+                if (expr->type->getType() != TYPE_INTEGER) yyerror("Expected integer.");
+            }
+
+            st.makeNew(lVal->getName());
+        }
 };
 
 
@@ -535,8 +826,14 @@ class Goto: public Stmt {
             id->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "Goto(";
+            res += id->getName();
+            res += ")";
+            return res;
+        }
         virtual void sem() override {
-            char *label = id->getName();
+            std::string label = id->getId();
             if (!st.isLabel(label)) yyerror("Label Not Found.\n");
             else if (!st.validLabel(label)) yyerror("Label has no Statement.\n");
         }
@@ -557,7 +854,15 @@ class Decl : public AST {
             type->printAST(out);
             out << ")";
         }
-        virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getName(), std::move(type)); }
+        virtual std::string getName() const override {
+            std::string res = "Declaration(";
+            res += idList->getName();
+            res += ", ";
+            res += type->getName();
+            res += ")";
+            return res;
+        }
+        virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getId(), std::move(type)); }
 };
 
 
@@ -567,16 +872,29 @@ class DeclList : public AST {
     public:
         DeclList() : decList() {}
 
-        void append(std::unique_ptr<Decl> d) { decList.insert(decList.begin(), std::move(d)); }
+        void append(std::unique_ptr<Decl> d) { decList.push_back(std::move(d)); }
         virtual void printAST(std::ostream &out) const override {
             out << "DeclList(";
             bool start = true;
+
             for (const auto &d : decList) {
                 if (!start) out << ", ";
                 start = false;
                 d->printAST(out);
             }
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "DeclList(";
+            bool start = true;
+
+            for (const auto &d : decList) {
+                if (!start) res += ", ";
+                start = false;
+                res += d->getName();
+            }
+            res += ")";
+            return res;
         }
         virtual void sem() override { for (auto &d : decList) d->sem(); }
 };
@@ -585,45 +903,6 @@ class DeclList : public AST {
 class Header : public AST {
     public:
         virtual void semForward() {}
-};
-
-
-class Formal : public AST {
-    private:
-        std::unique_ptr<IdList> idList;
-        std::unique_ptr<Type> type;
-    public:
-    Formal(std::unique_ptr<IdList> iL, std::unique_ptr<Type> t) : idList(std::move(iL)), type(std::move(t)) {}
-
-    void printAST(std::ostream &out) const override {
-        out << "Formal(";
-        idList->printAST(out);
-        out << ", ";
-        type->printAST(out);
-        out << ")";
-    }
-    virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getName(), std::move(type)); }
-};
-
-
-class FormalList : public AST {
-    private:
-        std::vector<std::unique_ptr<Formal>> formalList;
-    public:
-        FormalList() : formalList() {}
-
-        void append(std::unique_ptr<Formal> f) { formalList.insert(formalList.begin(), std::move(f)); }
-        virtual void printAST(std::ostream &out) const override {
-            out << "FormalList(";
-            bool start = true;
-            for (const auto &f : formalList) {
-                if (!start) out << ", ";
-                start = false;
-                f->printAST(out);
-            }
-            out << ")";
-        }
-        virtual void sem() override { for (auto &f : formalList) f->sem(); }
 };
 
 
@@ -641,16 +920,28 @@ class Procedure : public Header {
             formalList->printAST(out);
             out << ")";
         }
-        virtual void sem() override {
-            if (st.forwarded(id->getName())) {
-                st.backward(id->getName());
-                /* Lacks check on whether the parameters are correct */
-            }
-            else st.insertFormal(id->getName(), std::make_unique<TypeProc>(), std::move(formalList));
-            // st.enterScope();
-            // formalList->sem();
+        virtual std::string getName() const override {
+            std::string res = "Procedure(";
+            res += id->getName();
+            res += ", ";
+            res += formalList->getName();
+            res += ")";
+            return res;
         }
-        virtual void semForward() override { st.insertFormalForward(id->getName(), std::make_unique<TypeProc>(), std::move(formalList)); }
+        virtual void sem() override {
+            if (st.forwarded(id->getId())) {
+                std::string oldName="", newName="";
+                std::unique_ptr<FormalList> oldFormals = std::move(st.getParams(id->getId()));
+                if (oldFormals) oldName = oldFormals->getName();
+                if (!(formalList->getList().empty())) newName = formalList->getName();
+
+                if(oldName.compare(newName)) yyerror("Procedure has two different declarations.");
+
+                st.backward(id->getId());
+                st.insertParent(id->getId());
+            } else st.insertFormal(id->getId(), std::make_unique<TypeProc>(), std::move(formalList));
+        }
+        virtual void semForward() override { st.insertFormalForward(id->getId(), std::make_unique<TypeProc>(), std::move(formalList)); }
 };
 
 
@@ -662,7 +953,7 @@ class Function : public Header {
     public:
         Function(std::unique_ptr<Id> i, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL=nullptr) : id(std::move(i)), type(std::move(t)), formalList(std::move(fL)) {}
 
-        virtual void printAST(std::ostream &out) const {
+        virtual void printAST(std::ostream &out) const override {
             out << "Function(";
             id->printAST(out);
             out << ", type=";
@@ -671,16 +962,30 @@ class Function : public Header {
             formalList->printAST(out);
             out << ")";
         }
-        virtual void sem() override {
-            if (st.forwarded(id->getName())) {
-                st.backward(id->getName());
-                /* Lacks check on whether the parameters are correct */
-            }
-            else st.insertFormal(id->getName(), std::move(type), std::move(formalList));
-            // st.enterScope();
-            // formalList->sem();
+        virtual std::string getName() const override {
+            std::string res = "Function(";
+            res += id->getName();
+            res += ", type=";
+            res += type->getName();
+            res += ", ";
+            res += formalList->getName();
+            res += ")";
+            return res;
         }
-        virtual void semForward() override { st.insertFormalForward(id->getName(), std::move(type), std::move(formalList)); }
+        virtual void sem() override {
+            if (st.forwarded(id->getId())) {
+                std::string oldName="", newName="";
+                std::unique_ptr<FormalList> oldFormals = std::move(st.getParams(id->getId()));
+                if (oldFormals) oldName = oldFormals->getName();
+                if (!(formalList->getList().empty())) newName = formalList->getName();
+
+                if(oldName.compare(newName)) yyerror("Function has two different declarations.");
+
+                st.backward(id->getId());
+                st.insertParent(id->getId());
+            } else st.insertFormal(id->getId(), std::move(type), std::move(formalList));
+        }
+        virtual void semForward() override { st.insertFormalForward(id->getId(), std::move(type), std::move(formalList)); }
 
 };
 
@@ -710,13 +1015,18 @@ class Local : public AST {
             else if (localType.compare("forward") == 0) hdr->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            if (localType.compare("var") == 0) return dList->getName();
+            else if (localType.compare("label") == 0) return lbl->getName();
+            else if (localType.compare("forp") == 0) return hdr->getName() + ", " + body->getName();
+            else return hdr->getName();
+        }
         virtual void sem() override {
             if (localType.compare("var") == 0) dList->sem();
             else if (localType.compare("label")) lbl->sem();
             else if (localType.compare("forp")) {
                 hdr->sem();
                 body->sem();
-                // st.exitScope();
             } else if (localType.compare("forward")) hdr->semForward();
         }
 };
@@ -728,7 +1038,7 @@ class LocalList : public AST {
     public:
         LocalList(): localList() {}
 
-        void append(std::unique_ptr<Local> l) { localList.insert(localList.begin(), std::move(l)); }
+        void append(std::unique_ptr<Local> l) { localList.push_back(std::move(l)); }
         virtual void printAST(std::ostream &out) const override {
             out << "LocalList(";
             bool start = true;
@@ -738,6 +1048,18 @@ class LocalList : public AST {
                 l->printAST(out);
             }
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "LocalList(";
+            bool start = true;
+
+            for (const auto &l : localList) {
+                if (!start) res += ", ";
+                start = false;
+                res += l->getName();
+            }
+            res += ")";
+            return res;
         }
         virtual void sem() override { for (auto &l : localList) l->sem(); }
 };
@@ -756,6 +1078,14 @@ class Body : public Stmt {
             out << ", ";
             block->printAST(out);
             out << ")";
+        }
+        virtual std::string getName() const override {
+            std::string res = "Body(";
+            res += localList->getName();
+            res += ", ";
+            res += block->getName();
+            res +=")";
+            return res;
         }
         virtual void sem() override {
             st.enterScope();
@@ -777,6 +1107,12 @@ class Reference : public RVal {
             lVal->printAST(out);
             out << ")";
         }
+        virtual std::string getName() const override {
+            std::string res = "Reference(";
+            res += lVal->getName();
+            res +=")";
+            return res;
+        }
         virtual void sem() override {
             lVal->sem();
             if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
@@ -793,8 +1129,10 @@ class Result : public LVal {
         virtual bool isRes() override { return true; }
 
         virtual void printAST(std::ostream &out) const override { out << "Result()"; }
+        virtual std::string getName() const override { return "Result()"; }
         virtual void sem() override { type = std::make_unique<TypeRes>(); }
 };
+
 
 class Deref : public LVal {
     private:
@@ -802,7 +1140,8 @@ class Deref : public LVal {
     public:
         Deref(std::unique_ptr<Expr> e) : expr(std::move(e)) {}
 
-        virtual void printAST(ostream &out) const override { out << "Deref(" << *expr << ")"; }
+        virtual void printAST(std::ostream &out) const override { out << "Deref(" << *expr << ")"; }
+        virtual std::string getName() const override { return "Deref(" + expr->getName() + ")"; }
         virtual void sem() override {
             expr->sem();
             if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
@@ -810,5 +1149,6 @@ class Deref : public LVal {
             type = expr->type->getPointerType();
         }
 };
+
 
 #endif

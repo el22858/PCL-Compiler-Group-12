@@ -28,7 +28,7 @@
 
 D [0-9]
 L [a-zA-Z]
-W [ \t\n\r]
+W [ \t\r]
 
 %%
 
@@ -95,15 +95,17 @@ W [ \t\n\r]
 
 
 {L}({L}|{D}|_)*                             { ids.push_back(strdup(yytext)); /* return T_id; */ return yy::parser::make_T_id(strdup(yytext), loc); /* variable or function/procedure name */ }
-{D}+\.{D}+(e[\+\-]?{D}+)?                   { constReals.push_back(stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(stod(yytext),loc); }
-{D}+                                        { constInts.push_back(atoi(yytext)); /* return integer_const; */ return yy::parser::make_integer_const(atoi(yytext), loc); }
+{D}+\.{D}+(e[\+\-]?{D}+)?                   { constReals.push_back(std::stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(std::stod(yytext),loc); }
+{D}+                                        { constInts.push_back(std::atoi(yytext)); /* return integer_const; */ return yy::parser::make_integer_const(std::atoi(yytext), loc); }
 
 '.' | '\n'                                  { constChars.push_back(strdup(yytext)[0]); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext)[0], loc); /* Any character, including '\n' */ }
 \".*\"                                      { stringLits.push_back(strdup(yytext)); /* return string_lit; */ return yy::parser::make_string_lit(strdup(yytext), loc); /* Strings, might have to change this so I can tell it's a char array */ }
 
-{W}+ { /* Whitespace, do nothing */ }
+{W}+ { loc.step(); }
+\n+ { loc.lines(yyleng); loc.step(); }
 
 \(\*.*\*\) { /* This one is for comments */ }
+
 
 . { std::cerr << "Illegal character '" << yytext[0] << "' found at line " << loc.begin.line << "." << std::endl; exit(1); }
 

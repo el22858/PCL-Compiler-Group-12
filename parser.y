@@ -10,6 +10,8 @@
     #include <cstdio>
     #include <memory>
     #include <string>
+
+    extern FILE *yyin;
 %}
 
 %code requires {
@@ -138,9 +140,6 @@
 program : "program" T_id ";" body "." {
         /* std::cout << *$4 <<"\n"; */
         ast = $4;
-        /* st.enterScope();
-        $4->sem();
-        st.exitScope(); */
     }
     ;
 
@@ -154,7 +153,7 @@ local : "var" decList                                       { $$ = std::make_uni
     | header ";" body ";"                                   { $$ = std::make_unique<Local>($1, $3); }
     | "forward" header ";"                                  { $$ = std::make_unique<Local>($2); }
     ;
-label : T_id idList ";"                                     { auto x = $2; x->append(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>(std::move(x)); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); */ }
+label : T_id idList ";"                                     { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>(std::move(x)); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); */ }
     ;
 idList :                                                    { $$ = std::make_unique<IdList>(); }
     | idList "," T_id                                       { $$ = $1; $$->append(std::make_unique<Id>(ids.back())); ids.pop_back(); }
@@ -162,12 +161,12 @@ idList :                                                    { $$ = std::make_uni
 decList : declaration                                       { $$ = std::make_unique<DeclList>(); $$->append($1); }
     | decList declaration                                   { $$ = $1; $$->append($2); }
     ; 
-declaration : T_id idList ":" type ";"                      {  auto x = $2; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Decl>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Decl($2, $4); */ ids.pop_back(); }
+declaration : T_id idList ":" type ";"                      {  auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Decl>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Decl($2, $4); */ ids.pop_back(); }
     ;
 
-header : "procedure" T_id "(" formal formalList ")"         { auto x = $5; x->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), std::move(x)); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
+header : "procedure" T_id "(" formal formalList ")"         { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), std::move(x)); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
     | "procedure" T_id "(" ")"                              { $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
-    | "function" T_id "(" formal formalList ")" ":" type    { auto x = $5; x->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, std::move(x)); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
+    | "function" T_id "(" formal formalList ")" ":" type    { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, std::move(x)); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
     | "function" T_id "(" ")" ":" type                      { $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $6); ids.pop_back(); }
     ;
 
@@ -175,8 +174,8 @@ formalList :                                                { $$ = std::make_uni
     | formalList ";" formal                                 { $$ = $1; $$->append($3); }
     ;
 
-formal : "var" T_id idList ":" type                         { auto x = $3; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $5); /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
-    | T_id idList ":" type                                  { auto x = $2; x->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
+formal : "var" T_id idList ":" type                         { auto x = $3; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $5); /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
+    | T_id idList ":" type                                  { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
     ;
 
 type : "integer"                                            { $$ = std::make_unique<Integer>(); }
@@ -189,7 +188,7 @@ type : "integer"                                            { $$ = std::make_uni
     ;
 
 block :
-    "begin" stmt stmt_list "end"                            { auto x = $3; x->append($2); $$ = std::make_unique<Block>(std::move(x));  /* $3->append($2); $$ = std::make_unique<Block>($3); */ }
+    "begin" stmt stmt_list "end"                            { auto x = $3; x->appendAtStart($2); $$ = std::make_unique<Block>(std::move(x));  /* $3->append($2); $$ = std::make_unique<Block>($3); */ }
     ;
 stmt_list :                                                 { $$ = std::make_unique<StmtList>(); }
     | stmt_list ";" stmt                                    { $$ = $1; $$->append($3); }
@@ -231,7 +230,7 @@ rVal : integer_const                                        { $$ = std::make_uni
     | real_const                                            { $$ = std::make_unique<RealConst>(constReals.back()); constReals.pop_back(); }
     | char_const                                            { $$ = std::make_unique<CharConst>(constChars.back()); constChars.pop_back(); }
     | "(" rVal ")"                                          { $$ = $2; }
-    | "nil"                                                 { $$ = std::make_unique<Nil>(); }
+    | "nil"                                                 { $$ = std::make_unique<NilRVal>(); }
     | rCall                                                 { $$ = $1; }
     | "@" lVal                                              { $$ = std::make_unique<Reference>($2); }
     | "not" expr                                            { $$ = std::make_unique<UnOp>(operators.back(), $2); operators.pop_back(); }
@@ -252,20 +251,21 @@ rVal : integer_const                                        { $$ = std::make_uni
     | expr ">=" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
     ;
 
-call : T_id "(" expr exprList ")"                           { auto x = $4; x->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
+call : T_id "(" expr exprList ")"                           { auto x = $4; x->appendAtStart($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
     | T_id "(" ")"                                          { $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     ;
 
-rCall : T_id "(" expr exprList ")"                          { auto x = $4; x->append($3); $$ = std::make_unique<CallRVal>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
+rCall : T_id "(" expr exprList ")"                          { auto x = $4; x->appendAtStart($3); $$ = std::make_unique<CallRVal>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
     | T_id "(" ")"                                          { $$ = std::make_unique<CallRVal>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     ;
 
 
 %%
 
-void yyerror(const char *msg) {
+void yyerror(std::string msg) {
     //printf("Syntax error: %s\n", msg);
-    fprintf(stderr, "%s\n", msg);
+    //fprintf(stderr, "%s\n", msg);
+    std::cout<<msg<<std::endl;
     exit(42);
 }
 
@@ -275,10 +275,162 @@ void yy::parser::error(const location_type& l, const std::string& m) {
   std::exit(1);
 }
 
-int main() {
-    yy::parser p;
-    int result = p.parse();
-    cout << *ast << "\n";
+void initLibs() {
+    std::unique_ptr<Id> id;
+    std::unique_ptr<IdList> iL;
+    std::unique_ptr<Formal> f;
+    std::unique_ptr<FormalList> fL;
+
+    // procedurewriteBoolean (b:boolean)
+    id = std::make_unique<Id>("b");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Boolean>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+    st.insertFormal("writeBoolean", std::make_unique<TypeProc>(), std::move(fL));
+
+    // procedurewriteString (vars:array ofchar)
+    id = std::make_unique<Id>("s");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<String>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+    st.insertFormal("writeString", std::make_unique<TypeProc>(), std::move(fL));
+
+
+    // function readInteger ():integer
+    st.insertFormal("readInteger", std::make_unique<Integer>(), std::make_unique<FormalList>());
+
+    // function readBoolean ():boolean
+    st.insertFormal("readBoolean", std::make_unique<Boolean>(), std::make_unique<FormalList>());
+
+    // function readChar ():char
+    st.insertFormal("readChar", std::make_unique<Char>(), std::make_unique<FormalList>());
+
+    // function readReal ():real
+    st.insertFormal("readReal", std::make_unique<Real>(), std::make_unique<FormalList>());
+
+    // procedure readString (size:integer;var s :arrayof char)
+    id = std::make_unique<Id>("size");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Integer>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+
+    id = std::make_unique<Id>("s");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Array>(std::make_unique<Char>()));
+    fL->append(std::move(f));
+
+    st.insertFormal("readString", std::make_unique<TypeProc>(), std::move(fL));
+
+
+    // function abs (n:integer):integer
+    id = std::make_unique<Id>("n");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Integer>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+
+    st.insertFormal("abs", std::make_unique<Integer>(), std::move(fL));
+
+    // procedurewriteReal (r:real)
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+    st.insertFormal("writeReal", std::make_unique<TypeProc>(), std::move(fL));
+
+    // function fabs (r:real) :real
+    st.insertFormal("fabs", std::make_unique<Real>(), std::move(fL));
+
+    // function sqrt (r:real):real
+    st.insertFormal("sqrt", std::make_unique<Real>(), std::move(fL));
+
+    // function sin (r : real):real
+    st.insertFormal("sin", std::make_unique<Real>(), std::move(fL));
+
+    // function cos (r : real):real
+    st.insertFormal("cos", std::make_unique<Real>(), std::move(fL));
+
+    // function tan (r : real):real
+    st.insertFormal("tan", std::make_unique<Real>(), std::move(fL));
+
+    // function arctan (r:real):real
+    st.insertFormal("arctan", std::make_unique<Real>(), std::move(fL));
+
+    // function exp (r : real):real
+    st.insertFormal("exp", std::make_unique<Real>(), std::move(fL));
+
+    // function ln (r:real):real
+    st.insertFormal("ln", std::make_unique<Real>(), std::move(fL));
+
+    // function pi () :real
+    st.insertFormal("pi", std::make_unique<Real>(), std::make_unique<FormalList>());
+
+
+    // function trunc(r : real):integer
+    st.insertFormal("trunc", std::make_unique<Integer>(), std::move(fL));
+
+    // function round(r : real):integer
+    st.insertFormal("round", std::make_unique<Integer>(), std::move(fL));
+
+
+    // procedurewriteChar (c:char)
+    id = std::make_unique<Id>("c");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Char>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+    st.insertFormal("writeChar", std::make_unique<TypeProc>(), std::move(fL));
+
+
+    // function ord (c : char): integer
+    st.insertFormal("ord", std::make_unique<Integer>(), std::move(fL));
+
+
+    // procedurewriteInteger (n:integer)
+    id = std::make_unique<Id>("n");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Integer>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
+    st.insertFormal("writeInteger", std::make_unique<TypeProc>(), std::move(fL));
+    
+    // function chr (n : integer) : char
+    st.insertFormal("chr", std::make_unique<Char>(), std::move(fL));
+
+}
+
+int main(int argc, char** argv) {
+    //yy::parser p;
+    //int result = p.parse();
+    // cout << ast->getName() << "\n";
     //if (result == 0) printf("Success.\n");
-    return result;
+    //return result;
+
+    yyin = fopen(argv[1], "r");
+    if (yyin == nullptr) {
+      perror(argv[1]);
+      return 1;
+    }
+    yyrestart(yyin);
+
+    yy::parser p;
+    p.parse();
+    std::cout << ast->getName() << std::endl;
+
+    st.enterScope();
+    initLibs();
+    ast->sem();
+    st.exitScope();
 }

@@ -8,20 +8,19 @@
 enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_NIL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER, TYPE_LABEL, TYPE_RES, TYPE_PROC };
 
 class Type : public AST {
-    private:
+    protected:
         Types val;
     public:
         virtual void sem() override { /* ... */ }
-        Types getType() { return val; }
+        virtual Types getType() { return val; }
         virtual std::unique_ptr<Type> getPointerType() { return nullptr; }
 };
 
 
 class Integer : public Type {
     private:
-        Types val;
     public:
-        Integer() : val(TYPE_INTEGER) {}
+        Integer() { val = TYPE_INTEGER; }
 
         virtual void printAST(std::ostream &out) const override { out << "Integer()"; }
         virtual void sem() override { /* ... */ }
@@ -29,21 +28,18 @@ class Integer : public Type {
 
 
 class String : public Type {
-    private:
-        Types val;
     public:
-        String() : val(TYPE_STRING) {}
+        String() { val = TYPE_STRING; }
 
         virtual void printAST(std::ostream &out) const override { out << "String()"; }
+        virtual std::string getName() { return "string"; }
         virtual void sem() override { /* ... */ }
 };
 
 
 class Char : public Type {
-    private:
-        Types val;
     public:
-        Char() : val(TYPE_CHAR) {}
+        Char() { val = TYPE_CHAR; }
 
         virtual void printAST(std::ostream &out) const override { out << "Const()"; }
         virtual void sem() override { /* ... */ }
@@ -51,10 +47,8 @@ class Char : public Type {
 
 
 class Real : public Type {
-    private:
-        Types val;
     public:
-        Real() : val(TYPE_REAL) {}
+        Real() { val = TYPE_REAL; }
 
         virtual void printAST(std::ostream &out) const override { out << "Real()"; }
         virtual void sem() override { /* ... */ }
@@ -62,10 +56,8 @@ class Real : public Type {
 
 
 class Boolean : public Type {
-    private:
-        Types val;
     public:
-        Boolean() : val(TYPE_BOOLEAN) {}
+        Boolean() { val = TYPE_BOOLEAN; }
 
         virtual void printAST(std::ostream &out) const override { out << "Boolean()"; }
         virtual void sem() override { /* ... */ }
@@ -74,11 +66,10 @@ class Boolean : public Type {
 
 class Array : public Type {
     private:
-        Types val;
         std::unique_ptr<Type> arType;
         int size;
     public:
-        Array(std::unique_ptr<Type> t, int s = -1) : val(TYPE_ARRAY), arType(std::move(t)) { size = (s > 0) ? s : -1; }
+        Array(std::unique_ptr<Type> t, int s = -1) : arType(std::move(t)) { val = TYPE_ARRAY; size = (s > 0) ? s : -1; }
 
         virtual void printAST(std::ostream &out) const override {
             out << "Array(";
@@ -91,51 +82,38 @@ class Array : public Type {
 
 class Pointer : public Type {
     private:
-        Types val;
         std::unique_ptr<Type> pType;
     public:
-        Pointer(std::unique_ptr<Type> t) : val(TYPE_POINTER), pType(std::move(t)) {}
+        Pointer(std::unique_ptr<Type> t) : pType(std::move(t)) { val = TYPE_POINTER; }
 
         virtual std::unique_ptr<Type> getPointerType() override { return std::move(pType); }
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
         virtual void sem() override { /* ... */ }
 };
 
-class TypeNil : public Type {
-    private:
-        Types val;
-    public:
-        TypeNil() : val(TYPE_NIL) {}
+class TypeNil : public Type {    public:
+        TypeNil() { val = TYPE_NIL; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeNil()"; }
         virtual void sem() override { /* ... */ }
 };
 
-class TypeRes : public Type {
-    private:
-        Types val;
-    public:
-        TypeRes() : val(TYPE_RES) {}
+class TypeRes : public Type {    public:
+        TypeRes() { val = TYPE_RES; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeRes()"; }
         virtual void sem() override { /* ... */ }
 };
 
-class TypeLbl : public Type {
-    private:
-        Types val;
-    public:
-        TypeLbl() : val(TYPE_LABEL) {}
+class TypeLbl : public Type {    public:
+        TypeLbl() { val = TYPE_LABEL; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeLabel()"; }
         virtual void sem() override { /* ... */ }
 };
 
-class TypeProc : public Type {
-    private:
-        Types val;
-    public:
-        TypeProc() : val(TYPE_PROC) {}
+class TypeProc : public Type {    public:
+        TypeProc() { val = TYPE_PROC; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeProcedure()"; }
         virtual void sem() override { /* ... */ }

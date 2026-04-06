@@ -20,16 +20,17 @@ class Stmt;
 
 class Scope {
     private:
-        std::map<char *, STEntry> locals;
-        std::map<char *, std::unique_ptr<FormalList>> params;
-        std::map<char *, std::unique_ptr<Stmt>> lblStmt;
-        std::map<char *, bool> isForm, label, isForward;
+        std::map<std::string , STEntry> locals;
+        std::map<std::string , std::unique_ptr<FormalList>> params;
+        std::map<std::string , std::unique_ptr<Stmt>> lblStmt;
+        std::map<std::string , bool> isForm, label, isForward, isNewMap;
+        std::vector<std::string> localForp;
         int offset;
     public:
-        Scope() : locals() {}
-        Scope(int o) : locals(), offset(o) {}
+        Scope() : locals(), localForp() {}
+        Scope(int o) : locals(), localForp(), offset(o) {}
 
-        void insert(char *id, std::unique_ptr<Type> type) {
+        void insert(std::string id, std::unique_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
             locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = false;
@@ -38,15 +39,16 @@ class Scope {
             params[id] = nullptr;
         }
 
-        void insertFormal(char *id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormal(std::string id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
             locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = true;
             isForward[id] = false;
             label[id] = false;
             params[id] = std::move(fL);
+            localForp.push_back(id);
         }
-        void insertFormalForward(char *id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormalForward(std::string id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
             locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = true;
@@ -55,7 +57,7 @@ class Scope {
             params[id] = std::move(fL);
         }
 
-        void insertLabel(char *id, std::unique_ptr<Type> type) {
+        void insertLabel(std::string id, std::unique_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
             locals[id] = STEntry(std::move(type), offset++);
             isForm[id] = false;
@@ -64,25 +66,36 @@ class Scope {
             params[id] = nullptr;
         }
 
-        STEntry* lookup(char *id) {
+        STEntry* lookup(std::string id) {
             if (locals.find(id) == locals.end()) return nullptr;
             return &(locals[id]);
         }
 
-        std::unique_ptr<FormalList> getParams(char *id) { return std::move(params[id]); }
-        bool isFormal(char *id) {
+        std::unique_ptr<FormalList> getParams(std::string id) { return std::move(params[id]); }
+        bool isFormal(std::string id) {
             if (lookup(id)) return isForm[id];
             return false;
         }
 
         int get_offset() { return offset; }
 
-        bool forwarded(char *c) { return isForward[c]; }
-        void backward(char *c) { isForward[c] = false; }
+        bool forwarded(std::string c) { return isForward[c]; }
+        void backward(std::string c) { isForward[c] = false; }
 
-        bool isLabel(char *c) { return label[c]; }
-        bool validLabel(char *c) { return (lblStmt.find(c) != lblStmt.end()); }
-        void insertLabelStmt(char *c, std::unique_ptr<Stmt> s) { lblStmt[c] = std::move(s); }
+        bool isLabel(std::string c) { return label[c]; }
+        bool validLabel(std::string c) { return (lblStmt.find(c) != lblStmt.end()); }
+        void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { lblStmt[c] = std::move(s); }
+
+        void makeNew(std::string c) { isNewMap[c] = true; }
+        bool isNew(std::string c) { return (isNewMap.find(c) != isNewMap.end()); }
+
+        bool hasRes() { return (lookup("result") != nullptr); }
+
+        std::string getParent() {
+            if (localForp.size()) return localForp.back();
+            else yyerror("Couldn't find parent function.");
+        }
+        void insertParent(std::string c) { localForp.push_back(c); }
 };
 
 class SymbolTable {
@@ -91,28 +104,28 @@ class SymbolTable {
     public:
         SymbolTable() : scopes() {}
 
-        void insert(char *id, std::unique_ptr<Type> t) { scopes.back().insert(id, std::move(t)); }
-        void insertFormal(char *id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, std::move(t), std::move(fL)); }
-        void insertFormalForward(char *id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, std::move(t), std::move(fL)); }
-        void insertLabel(char *id, std::unique_ptr<Type> t) { scopes.back().insertLabel(id, std::move(t)); }
+        void insert(std::string id, std::unique_ptr<Type> t) { scopes.back().insert(id, std::move(t)); }
+        void insertFormal(std::string id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, std::move(t), std::move(fL)); }
+        void insertFormalForward(std::string id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, std::move(t), std::move(fL)); }
+        void insertLabel(std::string id, std::unique_ptr<Type> t) { scopes.back().insertLabel(id, std::move(t)); }
 
-        STEntry* lookup(char* id) {
+        STEntry* lookup(std::string id) {
             for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
                 STEntry *e = s->lookup(id);
                 if (e) return e;
             }
 
-            // yyerror("Variable not found.");
+            std::string err = "Variable \"" + id + "\" not found.";
+            yyerror(err);
             return nullptr;
         }
 
-        std::unique_ptr<FormalList> getParams(char *id) {
+        std::unique_ptr<FormalList> getParams(std::string id) {
             for (auto s = scopes.rbegin(); s!= scopes.rend(); ++s) {
                 STEntry *e = s->lookup(id);
                 if (e) {
-                    if (s->isFormal(id)) return s->getParams(id);
+                    if (s->isFormal(id)) return std::move(s->getParams(id));
                     yyerror("Variable named instead of function");
-                    return nullptr;
                 }
             }
             return nullptr;
@@ -124,12 +137,31 @@ class SymbolTable {
         }
         void exitScope() { scopes.pop_back(); }
 
-        bool forwarded(char *c) { return scopes.back().forwarded(c); }
-        void backward(char *c) { scopes.back().backward(c); }
+        bool forwarded(std::string c) { return scopes.back().forwarded(c); }
+        void backward(std::string c) { scopes.back().backward(c); }
 
-        bool isLabel(char *c) { return scopes.back().isLabel(c); }
-        bool validLabel(char *c) { return scopes.back().validLabel(c); }
-        void insertLabelStmt(char *c, std::unique_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, std::move(s)); }
+        bool isLabel(std::string c) { return scopes.back().isLabel(c); }
+        bool validLabel(std::string c) { return scopes.back().validLabel(c); }
+        void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, std::move(s)); }
+
+        void makeNew(std::string c) { scopes.back().makeNew(c); }
+        bool isNew(std::string c) { return scopes.back().isNew(c); }
+
+        bool isFormal(std::string c) {
+            for (auto s = scopes.rbegin(); s != scopes.rend(); ++s){
+                if (s->lookup(c)) return s->isFormal(c);
+            }
+            return false;
+        }
+        // FormalList getFormals(std::string c) { return scopes.back().; }
+        void insertParent(std::string c) {}
+        std::string getParent() {
+            if (scopes.size() == 1) return scopes.back().getParent();
+            else if (scopes.size() >= 2) return scopes[scopes.size() - 2].getParent();
+            else yyerror("Couldn't find parent function");
+        }
+
+        bool hasRes() { return scopes.back().hasRes(); }
 };
 
 extern SymbolTable st;
