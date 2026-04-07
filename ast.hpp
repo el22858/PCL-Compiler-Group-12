@@ -333,13 +333,13 @@ class RealConst : public RVal {
 
 class CharConst : public RVal {
     private:
-        char val;
+        char *val;
     public:
-        CharConst(char c) : val(c) {}
+        CharConst(char *c) : val(c) {}
 
-        virtual void printAST(std::ostream &out) const override { out << "CharConst(" << val << ")"; }
-        virtual std::string getName() const override { return "CharConst(" + val + ')'; }
-        virtual void sem() override { type = std::unique_ptr<Char>(); }
+        virtual void printAST(std::ostream &out) const override {out << "CharConst(" << val << ")"; }
+        virtual std::string getName() const override { return "CharConst(" + std::string(val) + ")"; }
+        virtual void sem() override { type = std::make_unique<Char>(); }
 };
 
 class NilLVal : public LVal {
@@ -489,7 +489,10 @@ class ArrayItem: public LVal {
             expr->sem();
             if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
             
-            if (!(lVal->typeCheck(TYPE_ARRAY))) yyerror("Expected array.");
+            if (!(lVal->typeCheck(TYPE_ARRAY))) {
+                std::cout<<"BRUH"<<std::endl;
+                exit(0);
+            }
             else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
 
             type = std::move(lVal->type);

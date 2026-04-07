@@ -6,7 +6,7 @@
 #include <vector>
 
 extern std::vector<char *> ids, stringLits, operators;
-extern std::vector<char> constChars;
+extern std::vector<char *> constChars;
 extern std::vector<int> constInts;
 extern std::vector<double> constReals;
 

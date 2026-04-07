@@ -103,7 +103,7 @@
 %token<char *> T_id
 %token<int> integer_const
 %token<double> real_const
-%token<char> char_const
+%token<char *> char_const
 %token<char *> string_lit
 %token T_escape
 
@@ -349,27 +349,75 @@ void initLibs() {
     st.insertFormal("writeReal", std::make_unique<TypeProc>(), std::move(fL));
 
     // function fabs (r:real) :real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("fabs", std::make_unique<Real>(), std::move(fL));
 
     // function sqrt (r:real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("sqrt", std::make_unique<Real>(), std::move(fL));
 
     // function sin (r : real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("sin", std::make_unique<Real>(), std::move(fL));
 
     // function cos (r : real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("cos", std::make_unique<Real>(), std::move(fL));
 
     // function tan (r : real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("tan", std::make_unique<Real>(), std::move(fL));
 
     // function arctan (r:real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("arctan", std::make_unique<Real>(), std::move(fL));
 
     // function exp (r : real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("exp", std::make_unique<Real>(), std::move(fL));
 
     // function ln (r:real):real
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("ln", std::make_unique<Real>(), std::move(fL));
 
     // function pi () :real
@@ -377,9 +425,21 @@ void initLibs() {
 
 
     // function trunc(r : real):integer
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("trunc", std::make_unique<Integer>(), std::move(fL));
 
     // function round(r : real):integer
+    id = std::make_unique<Id>("r");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Real>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("round", std::make_unique<Integer>(), std::move(fL));
 
 
@@ -394,6 +454,12 @@ void initLibs() {
 
 
     // function ord (c : char): integer
+    id = std::make_unique<Id>("c");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Char>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("ord", std::make_unique<Integer>(), std::move(fL));
 
 
@@ -407,6 +473,12 @@ void initLibs() {
     st.insertFormal("writeInteger", std::make_unique<TypeProc>(), std::move(fL));
     
     // function chr (n : integer) : char
+    id = std::make_unique<Id>("n");
+    iL = std::make_unique<IdList>();
+    iL->append(std::move(id));
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Integer>());
+    fL = std::make_unique<FormalList>();
+    fL->append(std::move(f));
     st.insertFormal("chr", std::make_unique<Char>(), std::move(fL));
 
 }
@@ -427,7 +499,7 @@ int main(int argc, char** argv) {
 
     yy::parser p;
     p.parse();
-    std::cout << ast->getName() << std::endl;
+    // std::cout << ast->getName() << std::endl;
 
     st.enterScope();
     initLibs();

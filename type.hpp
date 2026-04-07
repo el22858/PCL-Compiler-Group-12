@@ -7,6 +7,36 @@
 
 enum Types { TYPE_INTEGER, TYPE_BOOLEAN, TYPE_REAL, TYPE_NIL, TYPE_ARRAY, TYPE_IARRAY, TYPE_CHAR, TYPE_STRING, TYPE_POINTER, TYPE_LABEL, TYPE_RES, TYPE_PROC };
 
+inline std::ostream &operator<<(std::ostream &out, Types t) {
+    switch(t) {
+    case TYPE_INTEGER:
+        out << "int";
+        break;
+    case TYPE_BOOLEAN:
+        out << "boolean";
+        break;
+    case TYPE_REAL:
+        out << "real";
+        break;
+    case TYPE_NIL:
+        out << "nil";
+        break;
+    case TYPE_ARRAY:
+        out << "array";
+        break;
+    case TYPE_IARRAY:
+        out << "array item";
+        break;
+    case TYPE_CHAR:
+        out << "char";
+        break;
+    default:
+        out << "not yet printable, shut up";
+        break;
+    }
+    return out;
+}
+
 class Type : public AST {
     protected:
         Types val;

@@ -19,7 +19,7 @@
 
     #define T_eof 0
     std::vector<char *> ids, stringLits, operators;
-    std::vector<char> constChars;
+    std::vector<char *> constChars;
     std::vector<int> constInts;
     std::vector<double> constReals;
 
@@ -98,7 +98,7 @@ W [ \t\r]
 {D}+\.{D}+(e[\+\-]?{D}+)?                   { constReals.push_back(std::stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(std::stod(yytext),loc); }
 {D}+                                        { constInts.push_back(std::atoi(yytext)); /* return integer_const; */ return yy::parser::make_integer_const(std::atoi(yytext), loc); }
 
-'.' | '\n'                                  { constChars.push_back(strdup(yytext)[0]); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext)[0], loc); /* Any character, including '\n' */ }
+'[^\"\'\\]'                                  { constChars.push_back(strdup(yytext)); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext), loc); /* Any character, including '\n' */ }
 \".*\"                                      { stringLits.push_back(strdup(yytext)); /* return string_lit; */ return yy::parser::make_string_lit(strdup(yytext), loc); /* Strings, might have to change this so I can tell it's a char array */ }
 
 {W}+ { loc.step(); }
