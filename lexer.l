@@ -56,7 +56,7 @@ W [ \t\r]
 "mod" { operators.push_back((yytext)); /* return T_mod; */ return yy::parser::make_T_mod(yytext, loc); }
 "new" { /* return T_new; */ return yy::parser::make_T_new(loc); }
 "nil" { /* return T_nil; */ return yy::parser::make_T_nil(loc); }
-"not" { operators.push_back((yytext)); /* return T_not; */ return yy::parser::make_T_not(yytext, loc); }
+"not" { operators.push_back(("not")); /* return T_not; */ return yy::parser::make_T_not(yytext, loc); }
 "of" { /* return T_of; */ return yy::parser::make_T_of(loc); }
 "or" { operators.push_back((yytext)); /* return T_or; */ return yy::parser::make_T_or(yytext, loc); }
 "procedure" { /* return T_procedure; */ return yy::parser::make_T_procedure(loc); }

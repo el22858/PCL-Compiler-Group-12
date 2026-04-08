@@ -8,3 +8,7 @@ parser.output
 pcl
 pcl.exe
 location.hpp
+quads.hpp
+*.sh
+
+*.imm

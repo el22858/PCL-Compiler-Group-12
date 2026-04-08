@@ -15,6 +15,22 @@ struct STEntry {
     STEntry(std::unique_ptr<Type> t, int o) : type(std::move(t)), offset(o) {}
 };
 
+struct quad {
+    std::string op, x, y, z;
+
+    quad(std::string opname, std::string op1, std::string op2, std::string op3) : op(opname), x(op1), y(op2), z(op3) {}
+};
+
+inline std::ostream &operator<<(std::ostream &out, const quad &q) {
+    out << q.op << ", " << q.x << ", " << q.y << ", " << q.z;
+    return out;
+}
+
+inline std::ostream &operator<<(std::ostream &out, const std::vector<quad> &v) {
+    for (int i=0; i<v.size(); i++) out << i+1 << ": " << v[i] << std::endl;
+    return out;
+}
+
 class FormalList;
 class Stmt;
 
@@ -26,9 +42,12 @@ class Scope {
         std::map<std::string , bool> isForm, label, isForward, isNewMap;
         std::vector<std::string> localForp;
         int offset;
+
+        int next;
+        std::vector<quad> quadList;
     public:
-        Scope() : locals(), localForp() {}
-        Scope(int o) : locals(), localForp(), offset(o) {}
+        Scope() : locals(), localForp(), next(0) {}
+        Scope(int o) : locals(), localForp(), offset(o), next(0) {}
 
         void insert(std::string id, std::unique_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
@@ -96,6 +115,12 @@ class Scope {
             else yyerror("Couldn't find parent function.");
         }
         void insertParent(std::string c) { localForp.push_back(c); }
+
+
+        int quadNEXT() { return ++next; }
+        void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { quadList.push_back(quad(op, x, y, z)); }
+        std::vector<quad> getList() { return quadList; }
+        void quadMERGELISTS(std::vector<quad> l) { quadList.insert(quadList.end(), l.begin(), l.end()); }
 };
 
 class SymbolTable {
@@ -135,7 +160,14 @@ class SymbolTable {
             int o = scopes.empty() ? 0 : scopes.back().get_offset();
             scopes.push_back(Scope(o));
         }
-        void exitScope() { scopes.pop_back(); }
+        void exitScope() {
+            // std::cout << scopes.back().getList();
+            // std::cout << "Oops" <<std::endl;
+            std::vector<quad> oldList = scopes.back().getList();
+            scopes.pop_back();
+
+            if (!scopes.empty()) scopes.back().quadMERGELISTS(oldList);
+        }
 
         bool forwarded(std::string c) { return scopes.back().forwarded(c); }
         void backward(std::string c) { scopes.back().backward(c); }
@@ -162,6 +194,11 @@ class SymbolTable {
         }
 
         bool hasRes() { return scopes.back().hasRes(); }
+
+
+        int quadNEXT() { return scopes.back().quadNEXT(); }
+        void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { scopes.back().quadGENQUAD(op, x, y, z); }
+        std::vector<quad> getList() { return scopes.back().getList(); }
 };
 
 extern SymbolTable st;

@@ -10,6 +10,7 @@
     #include <cstdio>
     #include <memory>
     #include <string>
+    #include <fstream>
 
     extern FILE *yyin;
 %}
@@ -25,6 +26,7 @@
     #include "basic.hpp"
     #include "symbol.hpp"
 
+    std::string name;
     static std::unique_ptr<Body> ast;
     SymbolTable st;
 %}
@@ -140,6 +142,7 @@
 program : "program" T_id ";" body "." {
         /* std::cout << *$4 <<"\n"; */
         ast = $4;
+        ast->setName($2);
     }
     ;
 
@@ -502,7 +505,12 @@ int main(int argc, char** argv) {
     // std::cout << ast->getName() << std::endl;
 
     st.enterScope();
+    st.insertParent(name);
     initLibs();
     ast->sem();
+    
+    std::string dude = "./" + ast->getBodyName() + ".imm";
+    std::ofstream imFile(dude);
+    imFile << st.getList();
     st.exitScope();
 }

@@ -61,6 +61,7 @@ class Expr : public AST {
     protected:
     public:
         std::unique_ptr<Type> type;
+        std::string place;
         virtual bool isRes() { return false; }
         bool typeCheck(Types t) { return type->getType() == t; }
 };
@@ -227,13 +228,25 @@ class UnOp : public RVal {
         virtual void sem() override {
             expr->sem();
 
-            if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0)) {
+            if (strcmp(op, "+") == 0) {
                 if (expr->typeCheck(TYPE_INTEGER)) type = std::make_unique<Integer>();
                 else if (expr->typeCheck(TYPE_REAL)) type = std::make_unique<Real>();
                 else yyerror("Expected number");
+
+                place = expr->place;
+            } else if (strcmp(op, "-") == 0) {
+                if (expr->typeCheck(TYPE_INTEGER)) type = std::make_unique<Integer>();
+                else if (expr->typeCheck(TYPE_REAL)) type = std::make_unique<Real>();
+                else yyerror("Expected number");
+
+                place = "$" + std::to_string(st.quadNEXT());
+                st.quadGENQUAD(op, expr->place, "-", place);
             } else if (strcmp(op, "not") == 0) {
                 if (expr->typeCheck(TYPE_BOOLEAN)) type = std::make_unique<Boolean>();
                 else yyerror("Expected boolean.");
+
+                place = "$" + std::to_string(st.quadNEXT());
+                st.quadGENQUAD(op, expr->place, "-", place);
             } else yyerror("Unary Operator not recognized"); // Trash
         }
 };
@@ -292,6 +305,9 @@ class BinOp : public RVal {
                 if (expr1->type == expr2->type) type = std::make_unique<Boolean>();
                 else yyerror("Type mismatch!");
             }
+
+            place = "$" + std::to_string(st.quadNEXT());
+            st.quadGENQUAD(op, expr1->place, expr2->place, place);
         }
 };
 
@@ -304,7 +320,11 @@ class IntConst : public RVal {
 
         virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
         virtual std::string getName() const override { return "IntConst(" + std::to_string(val) + ")"; }
-        virtual void sem() override { type = std::make_unique<Integer>(); }
+        virtual void sem() override {
+            type = std::make_unique<Integer>();
+
+            place = std::to_string(val);
+        }
 };
 
 
@@ -316,7 +336,11 @@ class BoolConst : public RVal {
 
         virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
         virtual std::string getName() const override { return (val) ? "BoolConst(true)" : "BoolConst(false)" ; }
-        virtual void sem() override { type = std::make_unique<Boolean>(); }
+        virtual void sem() override {
+            type = std::make_unique<Boolean>();
+
+            place = (val) ? "true" : "false";
+        }
 };
 
 
@@ -328,7 +352,11 @@ class RealConst : public RVal {
 
         virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
         virtual std::string getName() const override { return "RealConst(" + std::to_string(val) + ")"; }
-        virtual void sem() override { type = std::make_unique<Real>(); }
+        virtual void sem() override {
+            type = std::make_unique<Real>();
+
+            place = std::to_string(val);
+        }
 };
 
 class CharConst : public RVal {
@@ -339,7 +367,11 @@ class CharConst : public RVal {
 
         virtual void printAST(std::ostream &out) const override {out << "CharConst(" << val << ")"; }
         virtual std::string getName() const override { return "CharConst(" + std::string(val) + ")"; }
-        virtual void sem() override { type = std::make_unique<Char>(); }
+        virtual void sem() override {
+            type = std::make_unique<Char>();
+
+            place = val;
+        }
 };
 
 class NilLVal : public LVal {
@@ -349,7 +381,11 @@ class NilLVal : public LVal {
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()"; }
         virtual std::string getName() const override { return "Nil()"; }
-        virtual void sem() override { type = std::make_unique<TypeNil>(); }
+        virtual void sem() override {
+            type = std::make_unique<TypeNil>();
+
+            place = "nil";
+        }
 };
 
 class NilRVal : public RVal {
@@ -359,7 +395,11 @@ class NilRVal : public RVal {
 
         virtual void printAST(std::ostream &out) const override { out << "Nil()";}
         virtual std::string getName() const override { return "Nil()"; }
-        virtual void sem() override { type = std::make_unique<TypeNil>(); }
+        virtual void sem() override {
+            type = std::make_unique<TypeNil>();
+
+            place = "nil";
+        }
 };
 
 
@@ -371,7 +411,11 @@ class StringLit : public LVal {
 
         virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
         virtual std::string getName() const override { return "StringLit(" + val + ")"; } 
-        virtual void sem() override { type = std::make_unique<String>(); }
+        virtual void sem() override {
+            type = std::make_unique<String>();
+
+            place = val;
+        }
 };
 
 
@@ -388,6 +432,8 @@ class Id : public LVal {
             type = std::move(st.lookup(id)->type);
             STEntry *e = st.lookup(id);
             offset = e->offset;
+
+            place = id;
         }
         std::string getId() { return id; }
 };
@@ -496,6 +542,9 @@ class ArrayItem: public LVal {
             else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
 
             type = std::move(lVal->type);
+
+            place = st.quadNEXT();
+            st.quadGENQUAD("array", lVal->place, expr->place, place);
         }
 };
 
@@ -609,10 +658,15 @@ class Call : public Stmt {
                 for (const auto &f : fL->getList()) {
                     int k = f->getIdList().size();
                     for (int j=0; j<k; j++) {
-                        if ((f->getType()->getType()) != (func->getList()[i++]->type->getType())) yyerror("Type mismatch.");
+                        if ((f->getType()->getType()) != (func->getList()[i]->type->getType())) yyerror("Type mismatch.");
+
+                        // std::cout<<func->getList()[i]
+                        st.quadGENQUAD("par", func->getList()[i++]->place, "V", "-");
                     }
                 }
             }
+
+            st.quadGENQUAD("call", "-", "-", funcName);
         }
 };
 
@@ -660,11 +714,15 @@ class CallRVal : public RVal {
                 for (const auto &f : fL->getList()) {
                     int k = f->getIdList().size();
                     for (int j=0; j<k; j++) {
-                        if ((f->getType()->getType()) != (func->getList()[i++]->type->getType())) yyerror("Type mismatch.");
+                        if ((f->getType()->getType()) != (func->getList()[i]->type->getType())) yyerror("Type mismatch.");
+                        
+                        st.quadGENQUAD("par", func->getList()[i++]->place, "V", "-");
                     }
                 }
             }
             type = std::move(st.lookup(funcName)->type);
+
+            st.quadGENQUAD("call", "-", "-", funcName);
         }
 };
 
@@ -758,6 +816,8 @@ class Assign: public Stmt {
                 
                 lval->type = std::move(expr->type);
             } else if (lval->type->getType() != expr->type->getType()) yyerror("Assignment error.");
+
+            st.quadGENQUAD(":=", lval->place, "-", expr->place);
         }
 };
 
@@ -1072,8 +1132,10 @@ class Body : public Stmt {
     private:
         std::unique_ptr<LocalList> localList;
         std::unique_ptr<Block> block;
+        std::string name;
     public:
-        Body(std::unique_ptr<LocalList> l, std::unique_ptr<Block> b) : localList(std::move(l)), block(std::move(b)) {}
+        Body(std::unique_ptr<LocalList> l, std::unique_ptr<Block> b) : localList(std::move(l)), block(std::move(b)), name("") {}
+        Body(std::unique_ptr<LocalList> l, std::unique_ptr<Block> b, std::string s) : localList(std::move(l)), block(std::move(b)), name(s) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "Body(";
@@ -1090,10 +1152,15 @@ class Body : public Stmt {
             res +=")";
             return res;
         }
+        void setName(std::string s) { name = s; }
+        std::string getBodyName() { return name; }
         virtual void sem() override {
             st.enterScope();
+            // std::string name = st.getParent();
+            st.quadGENQUAD("unit", name, "-", "-");
             localList->sem();
             block->sem();
+            st.quadGENQUAD("endu", name, "-", "-");
             st.exitScope();
         }
 };
