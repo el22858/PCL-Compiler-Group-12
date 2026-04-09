@@ -5,31 +5,17 @@
 #include <map>
 #include <vector>
 
+#include "quads.hpp"
 #include "basic.hpp"
 #include "type.hpp"
 
 struct STEntry {
-    std::unique_ptr<Type> type;
+    std::shared_ptr<Type> type;
     int offset;
     STEntry() {}
-    STEntry(std::unique_ptr<Type> t, int o) : type(std::move(t)), offset(o) {}
+    STEntry(std::shared_ptr<Type> t, int o) : type(t), offset(o) {}
 };
 
-struct quad {
-    std::string op, x, y, z;
-
-    quad(std::string opname, std::string op1, std::string op2, std::string op3) : op(opname), x(op1), y(op2), z(op3) {}
-};
-
-inline std::ostream &operator<<(std::ostream &out, const quad &q) {
-    out << q.op << ", " << q.x << ", " << q.y << ", " << q.z;
-    return out;
-}
-
-inline std::ostream &operator<<(std::ostream &out, const std::vector<quad> &v) {
-    for (int i=0; i<v.size(); i++) out << i+1 << ": " << v[i] << std::endl;
-    return out;
-}
 
 class FormalList;
 class Stmt;
@@ -49,36 +35,36 @@ class Scope {
         Scope() : locals(), localForp(), next(0) {}
         Scope(int o) : locals(), localForp(), offset(o), next(0) {}
 
-        void insert(std::string id, std::unique_ptr<Type> type) {
+        void insert(std::string id, std::shared_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
-            locals[id] = STEntry(std::move(type), offset++);
+            locals[id] = STEntry(type, offset++);
             isForm[id] = false;
             isForward[id] = false;
             label[id] = false;
             params[id] = nullptr;
         }
 
-        void insertFormal(std::string id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormal(std::string id, std::shared_ptr<Type> type, std::unique_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
-            locals[id] = STEntry(std::move(type), offset++);
+            locals[id] = STEntry(type, offset++);
             isForm[id] = true;
             isForward[id] = false;
             label[id] = false;
             params[id] = std::move(fL);
             localForp.push_back(id);
         }
-        void insertFormalForward(std::string id, std::unique_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormalForward(std::string id, std::shared_ptr<Type> type, std::unique_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
-            locals[id] = STEntry(std::move(type), offset++);
+            locals[id] = STEntry(type, offset++);
             isForm[id] = true;
             isForward[id] = true;
             label[id] = false;
             params[id] = std::move(fL);
         }
 
-        void insertLabel(std::string id, std::unique_ptr<Type> type) {
+        void insertLabel(std::string id, std::shared_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
-            locals[id] = STEntry(std::move(type), offset++);
+            locals[id] = STEntry(type, offset++);
             isForm[id] = false;
             isForward[id] = false;
             label[id] = true;
@@ -89,8 +75,9 @@ class Scope {
             if (locals.find(id) == locals.end()) return nullptr;
             return &(locals[id]);
         }
-
+        
         std::unique_ptr<FormalList> getParams(std::string id) { return std::move(params[id]); }
+        void refreshFormal(std::string id, std::unique_ptr<FormalList> fL) { params[id] = std::move(fL); }
         bool isFormal(std::string id) {
             if (lookup(id)) return isForm[id];
             return false;
@@ -113,14 +100,22 @@ class Scope {
         std::string getParent() {
             if (localForp.size()) return localForp.back();
             else yyerror("Couldn't find parent function.");
+            return "";
         }
         void insertParent(std::string c) { localForp.push_back(c); }
 
 
-        int quadNEXT() { return ++next; }
+        int quadNEXTQUAD() { return (quadList.empty()) ? 1 : (quadList.size() + 1); }
+        int quadNEWTEMP() { return ++next; }
         void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { quadList.push_back(quad(op, x, y, z)); }
         std::vector<quad> getList() { return quadList; }
         void quadMERGELISTS(std::vector<quad> l) { quadList.insert(quadList.end(), l.begin(), l.end()); }
+        void quadBACKPATCH(int start, std::string z) {
+            for (int i = start; i < quadList.size(); ++i) {
+                if (quadList[i].getOp3().compare("*") == 0) quadList[i].setOp3(z);
+                std::cout << quadList[i] << std::endl;
+            }
+        }
 };
 
 class SymbolTable {
@@ -129,10 +124,10 @@ class SymbolTable {
     public:
         SymbolTable() : scopes() {}
 
-        void insert(std::string id, std::unique_ptr<Type> t) { scopes.back().insert(id, std::move(t)); }
-        void insertFormal(std::string id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, std::move(t), std::move(fL)); }
-        void insertFormalForward(std::string id, std::unique_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, std::move(t), std::move(fL)); }
-        void insertLabel(std::string id, std::unique_ptr<Type> t) { scopes.back().insertLabel(id, std::move(t)); }
+        void insert(std::string id, std::shared_ptr<Type> t) { scopes.back().insert(id, t); }
+        void insertFormal(std::string id, std::shared_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, std::move(fL)); }
+        void insertFormalForward(std::string id, std::shared_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, t, std::move(fL)); }
+        void insertLabel(std::string id, std::shared_ptr<Type> t) { scopes.back().insertLabel(id, t); }
 
         STEntry* lookup(std::string id) {
             for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
@@ -140,7 +135,7 @@ class SymbolTable {
                 if (e) return e;
             }
 
-            std::string err = "Variable \"" + id + "\" not found.";
+            std::string err = "Variable \"" + id + "\" not found for " + getParent() + ".";
             yyerror(err);
             return nullptr;
         }
@@ -155,6 +150,14 @@ class SymbolTable {
             }
             return nullptr;
         }
+        void refreshFormals(std::string c, std::unique_ptr<FormalList> fL) {
+            for (auto s = scopes.rbegin(); s!=scopes.rend(); ++s) {
+                STEntry *e = s->lookup(c);
+                if (e) {
+                    if (s->isFormal(c)) s->refreshFormal(c, std::move(fL));
+                }
+            }
+        }
 
         void enterScope() {
             int o = scopes.empty() ? 0 : scopes.back().get_offset();
@@ -165,8 +168,9 @@ class SymbolTable {
             // std::cout << "Oops" <<std::endl;
             std::vector<quad> oldList = scopes.back().getList();
             scopes.pop_back();
-
-            if (!scopes.empty()) scopes.back().quadMERGELISTS(oldList);
+            
+            finalQuadList = quadMERGELISTS(finalQuadList, oldList);
+            // if (!scopes.empty()) scopes.back().quadMERGELISTS(oldList);
         }
 
         bool forwarded(std::string c) { return scopes.back().forwarded(c); }
@@ -185,20 +189,22 @@ class SymbolTable {
             }
             return false;
         }
-        // FormalList getFormals(std::string c) { return scopes.back().; }
         void insertParent(std::string c) {}
         std::string getParent() {
             if (scopes.size() == 1) return scopes.back().getParent();
             else if (scopes.size() >= 2) return scopes[scopes.size() - 2].getParent();
             else yyerror("Couldn't find parent function");
+            return "";
         }
 
         bool hasRes() { return scopes.back().hasRes(); }
 
 
-        int quadNEXT() { return scopes.back().quadNEXT(); }
+        int quadNEXTQUAD() { return scopes.back().quadNEXTQUAD(); }
+        int quadNEWTEMP() { return scopes.back().quadNEWTEMP(); }
         void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { scopes.back().quadGENQUAD(op, x, y, z); }
         std::vector<quad> getList() { return scopes.back().getList(); }
+        void quadBACKPATCH(int start, std::string z) { scopes.back().quadBACKPATCH(start, z); }
 };
 
 extern SymbolTable st;

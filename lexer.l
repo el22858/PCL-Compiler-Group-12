@@ -29,6 +29,7 @@
 D [0-9]
 L [a-zA-Z]
 W [ \t\r]
+ESCAPE \\["t""n""r""0"\'\"\\]
 
 %%
 
@@ -98,8 +99,8 @@ W [ \t\r]
 {D}+\.{D}+(e[\+\-]?{D}+)?                   { constReals.push_back(std::stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(std::stod(yytext),loc); }
 {D}+                                        { constInts.push_back(std::atoi(yytext)); /* return integer_const; */ return yy::parser::make_integer_const(std::atoi(yytext), loc); }
 
-'[^\"\'\\]'                                  { constChars.push_back(strdup(yytext)); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext), loc); /* Any character, including '\n' */ }
-\".*\"                                      { stringLits.push_back(strdup(yytext)); /* return string_lit; */ return yy::parser::make_string_lit(strdup(yytext), loc); /* Strings, might have to change this so I can tell it's a char array */ }
+\'(({ESCAPE})|[^\"\'\\])\'                  { constChars.push_back(strdup(yytext)); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext), loc); /* Any character, including '\n' */ }
+\"(({ESCAPE})|[^\'\"\r\n\\])*\"             { stringLits.push_back(strdup(yytext)); /* return string_lit; */ return yy::parser::make_string_lit(strdup(yytext), loc); /* Strings, might have to change this so I can tell it's a char array */ }
 
 {W}+ { loc.step(); }
 \n+ { loc.lines(yyleng); loc.step(); }

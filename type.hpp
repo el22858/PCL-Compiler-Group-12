@@ -43,7 +43,7 @@ class Type : public AST {
     public:
         virtual void sem() override { /* ... */ }
         virtual Types getType() { return val; }
-        virtual std::unique_ptr<Type> getPointerType() { return nullptr; }
+        virtual std::shared_ptr<Type> getPointerType() { return nullptr; }
 };
 
 
@@ -71,7 +71,7 @@ class Char : public Type {
     public:
         Char() { val = TYPE_CHAR; }
 
-        virtual void printAST(std::ostream &out) const override { out << "Const()"; }
+        virtual void printAST(std::ostream &out) const override { out << "Char()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -96,10 +96,10 @@ class Boolean : public Type {
 
 class Array : public Type {
     private:
-        std::unique_ptr<Type> arType;
+        std::shared_ptr<Type> arType;
         int size;
     public:
-        Array(std::unique_ptr<Type> t, int s = -1) : arType(std::move(t)) { val = TYPE_ARRAY; size = (s > 0) ? s : -1; }
+        Array(std::shared_ptr<Type> t, int s = -1) : arType(t) { val = TYPE_ARRAY; size = (s > 0) ? s : -1; }
 
         virtual void printAST(std::ostream &out) const override {
             out << "Array(";
@@ -112,11 +112,11 @@ class Array : public Type {
 
 class Pointer : public Type {
     private:
-        std::unique_ptr<Type> pType;
+        std::shared_ptr<Type> pType;
     public:
-        Pointer(std::unique_ptr<Type> t) : pType(std::move(t)) { val = TYPE_POINTER; }
+        Pointer(std::shared_ptr<Type> t) : pType(t) { val = TYPE_POINTER; }
 
-        virtual std::unique_ptr<Type> getPointerType() override { return std::move(pType); }
+        virtual std::shared_ptr<Type> getPointerType() override { return pType; }
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
         virtual void sem() override { /* ... */ }
 };
@@ -146,6 +146,7 @@ class TypeProc : public Type {    public:
         TypeProc() { val = TYPE_PROC; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeProcedure()"; }
+        virtual std::string getName() const override { return "TypeProcedure()"; }
         virtual void sem() override { /* ... */ }
 };
 

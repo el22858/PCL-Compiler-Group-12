@@ -156,7 +156,7 @@ local : "var" decList                                       { $$ = std::make_uni
     | header ";" body ";"                                   { $$ = std::make_unique<Local>($1, $3); }
     | "forward" header ";"                                  { $$ = std::make_unique<Local>($2); }
     ;
-label : T_id idList ";"                                     { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>(std::move(x)); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); */ }
+label : T_id idList                                         { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); ids.pop_back(); $$ = std::make_unique<Label>(std::move(x)); /* $2->append(std::make_unique<Id>(ids.back())); $$ = new Label($2); */ }
     ;
 idList :                                                    { $$ = std::make_unique<IdList>(); }
     | idList "," T_id                                       { $$ = $1; $$->append(std::make_unique<Id>(ids.back())); ids.pop_back(); }
@@ -168,7 +168,7 @@ declaration : T_id idList ":" type ";"                      {  auto x = $2; x->a
     ;
 
 header : "procedure" T_id "(" formal formalList ")"         { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), std::move(x)); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
-    | "procedure" T_id "(" ")"                              { $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
+    | "procedure" T_id "(" ")"                              { std::cout << ids.back() << std::endl; $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     | "function" T_id "(" formal formalList ")" ":" type    { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, std::move(x)); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
     | "function" T_id "(" ")" ":" type                      { $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $6); ids.pop_back(); }
     ;
@@ -297,7 +297,7 @@ void initLibs() {
     id = std::make_unique<Id>("s");
     iL = std::make_unique<IdList>();
     iL->append(std::move(id));
-    f = std::make_unique<Formal>(std::move(iL), std::make_unique<String>());
+    f = std::make_unique<Formal>(std::move(iL), std::make_unique<Array>(std::make_unique<Char>()));
     fL = std::make_unique<FormalList>();
     fL->append(std::move(f));
     st.insertFormal("writeString", std::make_unique<TypeProc>(), std::move(fL));
@@ -486,6 +486,42 @@ void initLibs() {
 
 }
 
+
+
+std::vector<quad> finalQuadList;
+int quadNextTemp;
+
+quad quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { return quad(op, x, y, z); }
+
+int quadNEWTEMP() { return quadNextTemp++; }
+
+std::vector<quad> quadEMPTYLIST() {
+    std::vector<quad> list;
+    return list;
+}
+
+std::vector<quad> quadMAKELIST(quad x) {
+    std::vector<quad> list;
+    list.push_back(x);
+    return list;
+}
+
+std::vector<quad> quadMERGELISTS(std::vector<quad> l1, std::vector<quad> l2) {
+    std::vector<quad> l;
+
+    if (l1.size() >= l2.size()) {
+        l = l1;
+        l.insert(l.end(), l2.begin(), l2.end());
+    } else {
+        l = l2;
+        l.insert(l.begin(), l1.begin(), l1.end());
+    }
+
+    std::cout << l << std::endl;
+    return l;
+}
+
+
 int main(int argc, char** argv) {
     //yy::parser p;
     //int result = p.parse();
@@ -502,8 +538,11 @@ int main(int argc, char** argv) {
 
     yy::parser p;
     p.parse();
-    // std::cout << ast->getName() << std::endl;
+    //std::cout << ast->getName() << std::endl;
+    //std::cout << *ast << std::endl;
 
+    quadNextTemp = 1;
+    finalQuadList;
     st.enterScope();
     st.insertParent(name);
     initLibs();
@@ -511,6 +550,7 @@ int main(int argc, char** argv) {
     
     std::string dude = "./" + ast->getBodyName() + ".imm";
     std::ofstream imFile(dude);
-    imFile << st.getList();
     st.exitScope();
+
+    imFile << finalQuadList;
 }
