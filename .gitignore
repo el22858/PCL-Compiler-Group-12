@@ -1,9 +1,10 @@
 examples/
 backup/
-*.cpp
 *.o
 lexer.hpp
+lexer.cpp
 parser.hpp
+parser.cpp
 parser.output
 pcl
 pcl.exe

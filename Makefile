@@ -1,23 +1,23 @@
 all: distclean pcl
 
-lexer.cpp lexer.hpp: lexer.l
-	@flex $<
+src/lexer.cpp src/lexer.hpp: src/lexer.l
+	@flex -s -o src/lexer.cpp src/lexer.l
 
-lexer.o: lexer.cpp parser.hpp ast.hpp quads.hpp
-	@g++ -c -o lexer.o lexer.cpp
+src/lexer.o: src/lexer.cpp src/parser.hpp src/ast.hpp src/quads.hpp
+	@g++ -c -o src/lexer.o src/lexer.cpp
 
-parser.hpp parser.cpp: parser.y
-	@bison -dv -o parser.cpp parser.y
+src/parser.hpp src/parser.cpp: src/parser.y
+	@bison -dv -o src/parser.cpp src/parser.y
 
-parser.o: parser.cpp lexer.hpp ast.hpp quads.hpp
-	@g++ -c -o parser.o parser.cpp
+src/parser.o: src/parser.cpp src/lexer.hpp src/ast.hpp src/quads.hpp
+	@g++ -c -o src/parser.o src/parser.cpp
 
-pcl: lexer.o parser.o
-	@g++ -Wall -o pcl lexer.o parser.o
+pcl: src/lexer.o src/parser.o
+	@g++ -Wall -o pcl src/main.cpp src/lexer.o src/parser.o
 
 clean:
 	@clear
-	@rm -f lexer.cpp lexer.hpp parser.cpp parser.hpp parser.output *.o location.hpp *.imm
+	@rm -f src/lexer.cpp src/lexer.hpp src/parser.cpp src/parser.hpp src/parser.output src/*.o src/location.hpp *.imm
 
 distclean: clean
 	@rm -f pcl
