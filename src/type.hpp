@@ -64,7 +64,7 @@ class String : public Type {
         String() { val = TYPE_STRING; }
 
         virtual void printAST(std::ostream &out) const override { out << "String()"; }
-        virtual std::string getName() { return "string"; }
+        virtual std::string getName() const override { return "String()"; }
         virtual void sem() override { /* ... */ }
 };
 

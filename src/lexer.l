@@ -18,7 +18,8 @@
     static yy::location loc;
 
     #define T_eof 0
-    std::vector<char *> ids, stringLits, operators;
+    std::vector<char *> ids, stringLits;
+    std::vector<std::string> operators;
     std::vector<char *> constChars;
     std::vector<int> constInts;
     std::vector<double> constReals;

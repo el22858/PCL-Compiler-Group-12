@@ -27,19 +27,24 @@ inline std::ostream &operator<<(std::ostream &out, const quad &q) {
 }
 
 inline std::ostream &operator<<(std::ostream &out, const std::vector<quad> &v) {
-    for (int i=0; i<v.size(); i++) out << i+1 << ": " << v[i] << std::endl;
+    int s = v.size();
+    for (auto i=0; i<s; ++i) out << i+1 << ": " << v[i] << std::endl;
     return out;
 }
 
-quad quadGENQUAD(std::string op, std::string x, std::string y, std::string z);
+int quadNEXTQUAD();
+
+void quadGENQUAD(std::string op, std::string x, std::string y, std::string z);
 
 int quadNEWTEMP();
 
-std::vector<quad> quadEMPTYLIST();
+std::vector<int> quadEMPTYLIST();
 
 std::vector<int> quadMAKELIST(int x);
 
-std::vector<quad> quadMERGELISTS(std::vector<quad> l1, std::vector<quad> l2);
+std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2);
+
+void quadBACKPATCH(std::vector<int> l, std::string newAd);
 
 // std::string quadADDRESSOF(std::unique_ptr<Expr> e);
 

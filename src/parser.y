@@ -200,7 +200,7 @@ stmt_list :                                                 { $$ = std::make_uni
     | stmt_list ";" stmt                                    { $$ = $1; $$->append($3); }
     ;
 
-stmt :                                                      { $$ = nullptr; }
+stmt :                                                      { $$ = nullptr; $$->quadNEXT = quadEMPTYLIST(); }
     | lVal ":=" expr                                        { $$ = std::make_unique<Assign>($1, $3); }
     | block                                                 { $$ = $1; }
     | call                                                  { $$ = $1; }
