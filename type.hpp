@@ -44,6 +44,7 @@ class Type : public AST {
         virtual void sem() override { /* ... */ }
         virtual Types getType() { return val; }
         virtual std::shared_ptr<Type> getPointerType() { return nullptr; }
+        virtual std::shared_ptr<Type> getArrayType() { return nullptr; }
 };
 
 
@@ -53,6 +54,7 @@ class Integer : public Type {
         Integer() { val = TYPE_INTEGER; }
 
         virtual void printAST(std::ostream &out) const override { out << "Integer()"; }
+        virtual std::string getName() const override { return "Integer()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -72,6 +74,7 @@ class Char : public Type {
         Char() { val = TYPE_CHAR; }
 
         virtual void printAST(std::ostream &out) const override { out << "Char()"; }
+        virtual std::string getName() const override { return "Char()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -81,6 +84,7 @@ class Real : public Type {
         Real() { val = TYPE_REAL; }
 
         virtual void printAST(std::ostream &out) const override { out << "Real()"; }
+        virtual std::string getName() const override { return "Real()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -90,6 +94,7 @@ class Boolean : public Type {
         Boolean() { val = TYPE_BOOLEAN; }
 
         virtual void printAST(std::ostream &out) const override { out << "Boolean()"; }
+        virtual std::string getName() const override { return "Boolean()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -106,6 +111,17 @@ class Array : public Type {
             if (size > 0) out << "size=" << size << ", ";
             out << "type=" << *arType << ")";
         }
+        virtual std::string getName() const override {
+            std::string s = "Array(";
+            if (size > 0) {
+                s +="size=" + size;
+                s += ", ";
+            }
+            s += "type=" + arType->getName() + ")";
+
+            return s;
+        }
+        virtual std::shared_ptr<Type> getArrayType() { return arType; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -118,6 +134,7 @@ class Pointer : public Type {
 
         virtual std::shared_ptr<Type> getPointerType() override { return pType; }
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
+        virtual std::string getName() const override { return "Pointer(" + pType->getName() + ")"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -125,6 +142,7 @@ class TypeNil : public Type {    public:
         TypeNil() { val = TYPE_NIL; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeNil()"; }
+        virtual std::string getName() const override { return "TypeNil()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -132,6 +150,7 @@ class TypeRes : public Type {    public:
         TypeRes() { val = TYPE_RES; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeRes()"; }
+        virtual std::string getName() const override { return "TypeRes()"; }
         virtual void sem() override { /* ... */ }
 };
 
@@ -139,6 +158,7 @@ class TypeLbl : public Type {    public:
         TypeLbl() { val = TYPE_LABEL; }
 
         virtual void printAST(std::ostream &out) const override { out << "TypeLabel()"; }
+        virtual std::string getName() const override { return "TypeLabel()"; }
         virtual void sem() override { /* ... */ }
 };
 

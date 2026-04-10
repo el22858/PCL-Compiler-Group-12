@@ -37,9 +37,11 @@ int quadNEWTEMP();
 
 std::vector<quad> quadEMPTYLIST();
 
-std::vector<quad> quadMAKELIST(quad x);
+std::vector<int> quadMAKELIST(int x);
 
 std::vector<quad> quadMERGELISTS(std::vector<quad> l1, std::vector<quad> l2);
+
+// std::string quadADDRESSOF(std::unique_ptr<Expr> e);
 
 extern std::vector<quad> finalQuadList;
 

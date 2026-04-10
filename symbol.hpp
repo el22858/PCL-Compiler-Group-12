@@ -23,7 +23,7 @@ class Stmt;
 class Scope {
     private:
         std::map<std::string , STEntry> locals;
-        std::map<std::string , std::unique_ptr<FormalList>> params;
+        std::map<std::string , std::shared_ptr<FormalList>> params;
         std::map<std::string , std::unique_ptr<Stmt>> lblStmt;
         std::map<std::string , bool> isForm, label, isForward, isNewMap;
         std::vector<std::string> localForp;
@@ -35,6 +35,11 @@ class Scope {
         Scope() : locals(), localForp(), next(0) {}
         Scope(int o) : locals(), localForp(), offset(o), next(0) {}
 
+        void printScope(std::ostream &out) {
+            for (auto i : locals) out << i.first << " : " << *(i.second.type) << std::endl;
+            out << std::endl;
+        }
+
         void insert(std::string id, std::shared_ptr<Type> type) {
             if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
             locals[id] = STEntry(type, offset++);
@@ -44,22 +49,22 @@ class Scope {
             params[id] = nullptr;
         }
 
-        void insertFormal(std::string id, std::shared_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormal(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
             locals[id] = STEntry(type, offset++);
             isForm[id] = true;
             isForward[id] = false;
             label[id] = false;
-            params[id] = std::move(fL);
+            params[id] = fL;
             localForp.push_back(id);
         }
-        void insertFormalForward(std::string id, std::shared_ptr<Type> type, std::unique_ptr<FormalList> fL) {
+        void insertFormalForward(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL) {
             if (locals.find(id) != locals.end()) yyerror("Dafuq");
             locals[id] = STEntry(type, offset++);
             isForm[id] = true;
             isForward[id] = true;
             label[id] = false;
-            params[id] = std::move(fL);
+            params[id] = fL;
         }
 
         void insertLabel(std::string id, std::shared_ptr<Type> type) {
@@ -76,8 +81,8 @@ class Scope {
             return &(locals[id]);
         }
         
-        std::unique_ptr<FormalList> getParams(std::string id) { return std::move(params[id]); }
-        void refreshFormal(std::string id, std::unique_ptr<FormalList> fL) { params[id] = std::move(fL); }
+        std::shared_ptr<FormalList> getParams(std::string id) { return params[id]; }
+        void refreshFormal(std::string id, std::shared_ptr<FormalList> fL) { params[id] = fL; }
         bool isFormal(std::string id) {
             if (lookup(id)) return isForm[id];
             return false;
@@ -125,8 +130,8 @@ class SymbolTable {
         SymbolTable() : scopes() {}
 
         void insert(std::string id, std::shared_ptr<Type> t) { scopes.back().insert(id, t); }
-        void insertFormal(std::string id, std::shared_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, std::move(fL)); }
-        void insertFormalForward(std::string id, std::shared_ptr<Type> t, std::unique_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, t, std::move(fL)); }
+        void insertFormal(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, fL); }
+        void insertFormalForward(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, t, fL); }
         void insertLabel(std::string id, std::shared_ptr<Type> t) { scopes.back().insertLabel(id, t); }
 
         STEntry* lookup(std::string id) {
@@ -140,21 +145,23 @@ class SymbolTable {
             return nullptr;
         }
 
-        std::unique_ptr<FormalList> getParams(std::string id) {
+        void printTopScope(std::ostream &out) { scopes.back().printScope(out); }
+
+        std::shared_ptr<FormalList> getParams(std::string id) {
             for (auto s = scopes.rbegin(); s!= scopes.rend(); ++s) {
                 STEntry *e = s->lookup(id);
                 if (e) {
-                    if (s->isFormal(id)) return std::move(s->getParams(id));
+                    if (s->isFormal(id)) return s->getParams(id);
                     yyerror("Variable named instead of function");
                 }
             }
             return nullptr;
         }
-        void refreshFormals(std::string c, std::unique_ptr<FormalList> fL) {
+        void refreshFormals(std::string c, std::shared_ptr<FormalList> fL) {
             for (auto s = scopes.rbegin(); s!=scopes.rend(); ++s) {
                 STEntry *e = s->lookup(c);
                 if (e) {
-                    if (s->isFormal(c)) s->refreshFormal(c, std::move(fL));
+                    if (s->isFormal(c)) s->refreshFormal(c, fL);
                 }
             }
         }
@@ -164,9 +171,12 @@ class SymbolTable {
             scopes.push_back(Scope(o));
         }
         void exitScope() {
+            // std::cout << "Closing scope." << std::endl;
+            // printTopScope(std::cout);
             // std::cout << scopes.back().getList();
             // std::cout << "Oops" <<std::endl;
             std::vector<quad> oldList = scopes.back().getList();
+            
             scopes.pop_back();
             
             finalQuadList = quadMERGELISTS(finalQuadList, oldList);

@@ -37,13 +37,13 @@ ESCAPE \\["t""n""r""0"\'\"\\]
     loc.step();
 %}
 
-"and" { operators.push_back(strdup(yytext)); /* return T_and; */ return yy::parser::make_T_and(yytext, loc);  }
+"and" { operators.push_back(strdup("yytext")); /* return T_and; */ return yy::parser::make_T_and(yytext, loc);  }
 "array" { /* return T_array; */ return yy::parser::make_T_array(loc); }
 "begin" { /* return T_begin; */ return yy::parser::make_T_begin(loc); }
 "boolean" { /* return T_boolean; */ return yy::parser::make_T_boolean(loc); }
 "char" { /* return T_char; */ return yy::parser::make_T_char(loc); }
 "dispose" { /* return T_dispose; */ return yy::parser::make_T_dispose(loc); }
-"div" { operators.push_back((yytext)); /* return T_div; */ return yy::parser::make_T_div(yytext, loc); }
+"div" { operators.push_back(("div")); /* return T_div; */ return yy::parser::make_T_div(yytext, loc); }
 "do" { /* return T_do; */ return yy::parser::make_T_do(loc); }
 "else" { /* return T_else; */ return yy::parser::make_T_else(loc); }
 "end" { /* return T_end; */ return yy::parser::make_T_end(loc); }
@@ -54,7 +54,7 @@ ESCAPE \\["t""n""r""0"\'\"\\]
 "if" { /* return T_if; */ return yy::parser::make_T_if(loc); }
 "integer" { /* return T_integer; */ return yy::parser::make_T_integer(loc); }
 "label" { /* return T_label; */ return yy::parser::make_T_label(loc); }
-"mod" { operators.push_back((yytext)); /* return T_mod; */ return yy::parser::make_T_mod(yytext, loc); }
+"mod" { operators.push_back(("mod")); /* return T_mod; */ return yy::parser::make_T_mod(yytext, loc); }
 "new" { /* return T_new; */ return yy::parser::make_T_new(loc); }
 "nil" { /* return T_nil; */ return yy::parser::make_T_nil(loc); }
 "not" { operators.push_back(("not")); /* return T_not; */ return yy::parser::make_T_not(yytext, loc); }
@@ -75,8 +75,8 @@ ESCAPE \\["t""n""r""0"\'\"\\]
 "<=" { operators.push_back(strdup(yytext)); /* return T_leq; */ return yy::parser::make_T_leq(yytext, loc); }
 ":=" { operators.push_back(strdup(yytext)); /* return T_set; */ return yy::parser::make_T_set(loc); }
 
-"[" { operators.push_back(strdup(yytext)); /* return T_left_br; */ return yy::parser::make_T_left_br(yytext, loc); }
-"]" { operators.push_back(strdup(yytext)); /* return T_right_br; */ return yy::parser::make_T_right_br(yytext, loc); }
+"[" { /*operators.push_back(strdup(yytext));*/ /* return T_left_br; */ return yy::parser::make_T_left_br(yytext, loc); }
+"]" { /*operators.push_back(strdup(yytext));*/ /* return T_right_br; */ return yy::parser::make_T_right_br(yytext, loc); }
 "+" { operators.push_back(strdup(yytext)); /* return T_op_plus; */ return yy::parser::make_T_op_plus(yytext, loc); }
 "-" { operators.push_back(strdup(yytext)); /* return T_op_minus; */ return yy::parser::make_T_op_minus(yytext, loc); }
 "*" { operators.push_back(strdup(yytext)); /* return T_op_mult; */ return yy::parser::make_T_op_mult(yytext, loc); }

@@ -67,6 +67,7 @@ class Expr : public AST {
     public:
         std::shared_ptr<Type> type;
         std::string place;
+        std::vector<int> quadTRUE, quadFALSE;
         virtual bool isRes() { return false; }
         Types getType() { return type->getType(); }
         bool typeCheck(Types t) { return type->getType() == t; }
@@ -218,10 +219,10 @@ class LVal: public Expr {
 
 class UnOp : public RVal {
     private:
-        char* op;
+        std::string op;
         std::unique_ptr<Expr> expr;
     public:
-        UnOp(char* s, std::unique_ptr<Expr> e) : op(s), expr(std::move(e)) {}
+        UnOp(std::string s, std::unique_ptr<Expr> e) : op(s), expr(std::move(e)) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "UnOp(" << op << ", ";
@@ -239,20 +240,20 @@ class UnOp : public RVal {
         virtual void sem() override {
             expr->sem();
 
-            if (strcmp(op, "+") == 0) {
+            if (op.compare("+") == 0) {
                 if (expr->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
                 else if (expr->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
                 else yyerror("Expected number");
 
                 place = expr->place;
-            } else if (strcmp(op, "-") == 0) {
+            } else if (op.compare("-") == 0) {
                 if (expr->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
                 else if (expr->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
                 else yyerror("Expected number");
 
                 place = "$" + std::to_string(quadNEWTEMP());
                 st.quadGENQUAD(op, expr->place, "-", place);
-            } else if (strcmp(op, "not") == 0) {
+            } else if (op.compare("not") == 0) {
                 if (expr->typeCheck(TYPE_BOOLEAN)) type = std::make_shared<Boolean>();
                 else yyerror("Expected boolean.");
 
@@ -267,22 +268,20 @@ class UnOp : public RVal {
 class BinOp : public RVal {
     private:
         std::unique_ptr<Expr> expr1, expr2;
-        char* op;
+        std::string op;
     public:
-        BinOp(std::unique_ptr<Expr> e1, char* s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), op(s), expr2(std::move(e2)) {}
+        BinOp(std::unique_ptr<Expr> e1, std::string s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), op(s), expr2(std::move(e2)) {}
 
         virtual void printAST(std::ostream &out) const override {
-            out << "BinOp(";
+            out << op << "(";
             expr1->printAST(out);
             out << ", " << op << ", ";
             expr2->printAST(out);
             out << ")";
         }
         virtual std::string getName() const override {
-            std::string res = "BinOp(";
+            std::string res = op +"(";
             res += expr1->getName();
-            res += ", ";
-            res += op;
             res += ", ";
             res += expr2->getName();
             res += ")";
@@ -292,7 +291,7 @@ class BinOp : public RVal {
             expr1->sem();
             expr2->sem();
 
-            if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0) || (strcmp(op, "*") == 0)) {
+            if ((op.compare("+") == 0) || (op.compare("-") == 0) || (op.compare("*") == 0)) {
                 if (expr1->typeCheck(TYPE_INTEGER)) {
                     if (expr2->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
                     else if (expr2->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
@@ -304,28 +303,30 @@ class BinOp : public RVal {
 
                 place = "$" + std::to_string(quadNEWTEMP());
                 st.quadGENQUAD(op, expr1->place, expr2->place, place);
-            } else if (strcmp(op, "/") == 0) {
+            } else if (op.compare("/") == 0) {
                 if ((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Real>();
                 else yyerror("Expected int or real.");
 
                 place = "$" + std::to_string(quadNEWTEMP());
                 st.quadGENQUAD(op, expr1->place, expr2->place, place);
-            } else if ((strcmp(op, "div") == 0) || (strcmp(op, "mod") == 0)) {
+            } else if ((op.compare("div") == 0) || (op.compare("mod") == 0)) {
                 if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = std::make_shared<Integer>();
                 else yyerror("Expected int.");
 
                 place = "$" + std::to_string(quadNEWTEMP());
                 st.quadGENQUAD(op, expr1->place, expr2->place, place);
-            } else if ((strcmp(op, "and") == 0) || (strcmp(op, "or") == 0)) {
+            } else if ((op.compare("and") == 0) || (op.compare("or") == 0)) {
                 if ((expr1->typeCheck(TYPE_BOOLEAN) && (expr2->typeCheck(TYPE_BOOLEAN)))) type = std::make_shared<Boolean>();
                 else yyerror("Expected boolean.");
-            } else if ((strcmp(op, "<") == 0) || (strcmp(op, ">") == 0) || (strcmp(op, "<=") == 0) || (strcmp(op, ">=") == 0)) {
+            } else if ((op.compare("<") == 0) || (op.compare(">") == 0) || (op.compare("<=") == 0) || (op.compare(">=") == 0)) {
                 if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Boolean>();
                 else yyerror("Expected int or real.");
-            } else if ((strcmp(op, "=") == 0) || (strcmp(op, "<>") == 0)) {
+            } else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
                 if (expr1->type == expr2->type) type = std::make_shared<Boolean>();
                 else yyerror("Type mismatch!");
             }
+
+            std::cout << getName() << std::endl;
         }
 };
 
@@ -548,21 +549,25 @@ class ArrayItem: public LVal {
         }
         virtual void sem() override {
             lVal->sem();
-            if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
+            if (lVal->typeCheck(TYPE_RES)) lVal->type = st.lookup("result")->type;
             
             expr->sem();
-            if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
+            if (expr->typeCheck(TYPE_RES)) expr->type = st.lookup("result")->type;
             
             if (!(lVal->typeCheck(TYPE_ARRAY))) {
-                std::cout<<"BRUH"<<std::endl;
+                std::cout<<"HUHHH???"<<std::endl;
+                std::cout << lVal->getName() << " should be an array but it is not. Instead, it's a(n) " << lVal->getType() << "." << std::endl;
+                std::cout << *lVal << std::endl;
+                std::cout << *(lVal->type) << std::endl;
                 exit(0);
             }
             else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
-
-            type = std::move(lVal->type);
-
-            place = quadNEWTEMP();
+            
+            type = lVal->type->getArrayType();
+            
+            place = "$" + std::to_string(quadNEWTEMP());
             st.quadGENQUAD("array", lVal->place, expr->place, place);
+            place = "[" + place + "]";
         }
 };
 
@@ -663,7 +668,7 @@ class Call : public Stmt {
             st.lookup(funcName); /* Will throw error if it doesn't exist */
             if (!st.isFormal(funcName)) yyerror("Can't be called.");
             
-            std::unique_ptr<FormalList> fL;
+            std::shared_ptr<FormalList> fL;
             fL = st.getParams(funcName);
             
             int i = 0, expArgs = 0, actArgs = 0;
@@ -720,7 +725,7 @@ class CallRVal : public RVal {
             st.lookup(funcName); /* Will throw error if it doesn't exist */
             if (!st.isFormal(funcName)) yyerror("Can't be called.");
 
-            std::unique_ptr<FormalList> fL;
+            std::shared_ptr<FormalList> fL;
             fL = st.getParams(funcName);
             
             int i = 0, expArgs = 0, actArgs = 0;
@@ -840,7 +845,10 @@ class Assign: public Stmt {
                 if (expr->type->getType() != resType->getType()) yyerror("Type mismatch.");
                 
                 lval->type = expr->type;
-            } else if (lval->type->getType() != expr->type->getType()) yyerror("Assignment error.");
+            } else if (lval->type->getType() != expr->type->getType()) {
+                std::string err = lval->getName() + " is of type " + lval->type->getName() + ".\n" + expr->getName() + " is of type " + expr->type->getName() + ".\n";
+                yyerror(err);
+            }
 
             st.quadGENQUAD(":=", expr->place, "-", lval->place);
         }
@@ -997,9 +1005,9 @@ class Header : public AST {
 class Procedure : public Header {
     private:
         std::unique_ptr<Id> id;
-        std::unique_ptr<FormalList> formalList;
+        std::shared_ptr<FormalList> formalList;
     public:
-        Procedure(std::unique_ptr<Id> i, std::unique_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), formalList(std::move(fL)) {}
+        Procedure(std::unique_ptr<Id> i, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), formalList(fL) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "Procedure(";
@@ -1019,20 +1027,20 @@ class Procedure : public Header {
             return res;
         }
         virtual void sem() override {
-            formalList->sem();
             if (st.forwarded(id->getId())) {
                 std::string oldName="", newName="";
-                std::unique_ptr<FormalList> oldFormals = std::move(st.getParams(id->getId()));
+                std::shared_ptr<FormalList> oldFormals = st.getParams(id->getId());
                 if (oldFormals) oldName = oldFormals->getName();
                 if (!(formalList->getList().empty())) newName = formalList->getName();
-
+                
                 if(oldName.compare(newName)) yyerror("Procedure has two different declarations.");
-
+                
                 st.backward(id->getId());
-                st.refreshFormals(id->getId(), std::move(oldFormals));
+                st.refreshFormals(id->getId(), oldFormals);
                 st.insertParent(id->getId());
-            } else st.insertFormal(id->getId(), std::make_unique<TypeProc>(), std::move(formalList));
-
+            } else st.insertFormal(id->getId(), std::make_unique<TypeProc>(), formalList);
+            st.enterScope();
+            formalList->sem();
             // st.quadGENQUAD("unit", id->getId(), "-", "-");
             // st.quadGENQUAD("endu", id->getId(), "-", "-");
         }
@@ -1044,9 +1052,9 @@ class Function : public Header {
     private:
         std::unique_ptr<Id> id;
         std::shared_ptr<Type> type;
-        std::unique_ptr<FormalList> formalList;
+        std::shared_ptr<FormalList> formalList;
     public:
-        Function(std::unique_ptr<Id> i, std::shared_ptr<Type> t, std::unique_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), type(t), formalList(std::move(fL)) {}
+        Function(std::unique_ptr<Id> i, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), type(t), formalList(std::move(fL)) {}
 
         virtual void printAST(std::ostream &out) const override {
             out << "Function(";
@@ -1071,7 +1079,7 @@ class Function : public Header {
             formalList->sem();
             if (st.forwarded(id->getId())) {
                 std::string oldName="", newName="";
-                std::unique_ptr<FormalList> oldFormals = std::move(st.getParams(id->getId()));
+                std::shared_ptr<FormalList> oldFormals = std::move(st.getParams(id->getId()));
                 if (oldFormals) oldName = oldFormals->getName();
                 if (!(formalList->getList().empty())) newName = formalList->getName();
 
@@ -1122,9 +1130,13 @@ class Local : public AST {
             if (localType.compare("var") == 0) dList->sem();
             else if (localType.compare("label") == 0) lbl->sem();
             else if (localType.compare("forp") == 0) {
+                // if(st.lookup("x"))  std::cout << st.lookup("x")->type->getType() << std::endl;
+                // st.enterScope();
                 hdr->sem();
-                st.enterScope();
+                // std::cout << st.lookup("x")->type->getType() << std::endl;
+                // st.printTopScope(std::cout);
                 body->sem();
+                // std::cout << st.lookup("x")->type->getType() << std::endl;
                 st.exitScope();
             } else if (localType.compare("forward") == 0) hdr->semForward();
         }
@@ -1193,12 +1205,12 @@ class Body : public Stmt {
         virtual void sem() override {
             if (name.compare("") == 0) name = st.getParent(); 
 
-            st.enterScope();
+            // st.enterScope();
             localList->sem();
             st.quadGENQUAD("unit", name, "-", "-");
             block->sem();
             st.quadGENQUAD("endu", name, "-", "-");
-            st.exitScope();
+            // st.exitScope();
         }
 };
 
@@ -1224,6 +1236,9 @@ class Reference : public RVal {
             lVal->sem();
             if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
             type = std::make_shared<Pointer>(std::move(lVal->type));
+
+            place = "INCOMPLETE(" + lVal->place + ")";
+            // need to implement quadADDRESSOF
         }
 };
 
@@ -1237,7 +1252,11 @@ class Result : public LVal {
 
         virtual void printAST(std::ostream &out) const override { out << "Result()"; }
         virtual std::string getName() const override { return "Result()"; }
-        virtual void sem() override { type = std::make_shared<TypeRes>(); }
+        virtual void sem() override {
+            type = std::make_shared<TypeRes>();
+
+            place = "$$";
+        }
 };
 
 
@@ -1254,6 +1273,10 @@ class Deref : public LVal {
             if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
             if (!(expr->typeCheck(TYPE_POINTER))) yyerror("Expression is not a pointer.");
             type = expr->type->getPointerType();
+
+            std::string W = "$" + quadNEWTEMP();
+            st.quadGENQUAD(":=", expr->place, "-", W);
+            place ="[" + W + "]"; 
         }
 };
 

@@ -131,10 +131,13 @@
 %type<std::unique_ptr<LVal>> lVal
 %type<std::unique_ptr<RVal>> rVal
 
-%left<char *> "+" "-" "="
-%left<char *> "*" "/" "div" "mod" "or"
-%left<char *> "(" ")" "[" "]" "and" "not" "<=" ">=" "<" ">" "<>"
-%right<char *> "@" "^"
+%nonassoc<char *> "=" ">" "<" ">=" "<=" "<>"
+%left<char *> "+" "-" "or"
+%left<char *> "*" "/" "div" "mod" "and"
+%nonassoc<char *> "not"
+%nonassoc<char *> "^"
+%nonassoc<char *> "@"
+%nonassoc<char *> "[" "]" "(" ")"
 
 
 %%
@@ -239,19 +242,20 @@ rVal : integer_const                                        { $$ = std::make_uni
     | "not" expr                                            { $$ = std::make_unique<UnOp>(operators.back(), $2); operators.pop_back(); }
     | "+" expr                                              { $$ = std::make_unique<UnOp>(operators.back(), $2); operators.pop_back(); }
     | "-" expr                                              { $$ = std::make_unique<UnOp>(operators.back(), $2); operators.pop_back(); }
-    | expr "+" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "-" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "*" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "/" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "=" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "<" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr ">" expr                                         { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "div" expr                                       { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "mod" expr                                       { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "or" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "<>" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr "<=" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
-    | expr ">=" expr                                        { $$ = std::make_unique<BinOp>($1, operators.back(), $3); operators.pop_back(); }
+    | expr "+" expr                                         { $$ = std::make_unique<BinOp>($1, "+", $3); operators.pop_back(); }
+    | expr "-" expr                                         { $$ = std::make_unique<BinOp>($1, "-", $3); operators.pop_back(); }
+    | expr "*" expr                                         { $$ = std::make_unique<BinOp>($1, "*", $3); operators.pop_back(); }
+    | expr "/" expr                                         { $$ = std::make_unique<BinOp>($1, "/", $3); operators.pop_back(); }
+    | expr "=" expr                                         { $$ = std::make_unique<BinOp>($1, "=", $3); operators.pop_back(); }
+    | expr "<" expr                                         { $$ = std::make_unique<BinOp>($1, "<", $3); operators.pop_back(); }
+    | expr ">" expr                                         { $$ = std::make_unique<BinOp>($1, ">", $3); operators.pop_back(); }
+    | expr "div" expr                                       { $$ = std::make_unique<BinOp>($1, "div", $3); operators.pop_back(); }
+    | expr "mod" expr                                       { $$ = std::make_unique<BinOp>($1, "mod", $3); operators.pop_back(); }
+    | expr "or" expr                                        { $$ = std::make_unique<BinOp>($1, "or", $3); operators.pop_back(); }
+    | expr "and" expr                                        { $$ = std::make_unique<BinOp>($1, "and", $3); operators.pop_back(); }
+    | expr "<>" expr                                        { $$ = std::make_unique<BinOp>($1, "<>", $3); operators.pop_back(); }
+    | expr "<=" expr                                        { $$ = std::make_unique<BinOp>($1, "<=", $3); operators.pop_back(); }
+    | expr ">=" expr                                        { $$ = std::make_unique<BinOp>($1, ">=", $3); operators.pop_back(); }
     ;
 
 call : T_id "(" expr exprList ")"                           { auto x = $4; x->appendAtStart($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), std::move(x)); /* $4->append($3); $$ = std::make_unique<Call>(std::make_unique<Id>(ids.back()), $4); */ ids.pop_back(); }
@@ -495,16 +499,22 @@ quad quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { 
 
 int quadNEWTEMP() { return quadNextTemp++; }
 
+std::vector<int> quadMAKELIST(int x) {
+    std::vector<int> list;
+    list.push_back(x);
+    return list;
+}
+
 std::vector<quad> quadEMPTYLIST() {
     std::vector<quad> list;
     return list;
 }
 
-std::vector<quad> quadMAKELIST(quad x) {
-    std::vector<quad> list;
-    list.push_back(x);
-    return list;
-}
+//std::vector<quad> quadMAKELIST(quad x) {
+//    std::vector<quad> list;
+//    list.push_back(x);
+//    return list;
+//}
 
 std::vector<quad> quadMERGELISTS(std::vector<quad> l1, std::vector<quad> l2) {
     std::vector<quad> l;
@@ -517,7 +527,7 @@ std::vector<quad> quadMERGELISTS(std::vector<quad> l1, std::vector<quad> l2) {
         l.insert(l.begin(), l1.begin(), l1.end());
     }
 
-    std::cout << l << std::endl;
+    //std::cout << l << std::endl;
     return l;
 }
 
