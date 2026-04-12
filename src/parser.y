@@ -180,8 +180,8 @@ formalList :                                                { $$ = std::make_uni
     | formalList ";" formal                                 { $$ = $1; $$->append($3); }
     ;
 
-formal : "var" T_id idList ":" type                         { auto x = $3; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $5); /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
-    | T_id idList ":" type                                  { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $4); /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
+formal : "var" T_id idList ":" type                         { auto x = $3; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $5, true); /* $3->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($3, $5); */ ids.pop_back(); }
+    | T_id idList ":" type                                  { auto x = $2; x->appendAtStart(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>(std::move(x), $4, false); /* $2->append(std::make_unique<Id>(ids.back())); $$ = std::make_unique<Formal>($2, $4); */ ids.pop_back(); }
     ;
 
 type : "integer"                                            { $$ = std::make_unique<Integer>(); }

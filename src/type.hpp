@@ -40,9 +40,11 @@ inline std::ostream &operator<<(std::ostream &out, Types t) {
 class Type : public AST {
     protected:
         Types val;
+        int size;
     public:
         virtual void sem() override { /* ... */ }
         virtual Types getType() { return val; }
+        virtual int getSize() { return size; }
         virtual std::shared_ptr<Type> getPointerType() { return nullptr; }
         virtual std::shared_ptr<Type> getArrayType() { return nullptr; }
 };
@@ -51,7 +53,7 @@ class Type : public AST {
 class Integer : public Type {
     private:
     public:
-        Integer() { val = TYPE_INTEGER; }
+        Integer() { val = TYPE_INTEGER; size = 4; }
 
         virtual void printAST(std::ostream &out) const override { out << "Integer()"; }
         virtual std::string getName() const override { return "Integer()"; }
@@ -71,7 +73,7 @@ class String : public Type {
 
 class Char : public Type {
     public:
-        Char() { val = TYPE_CHAR; }
+        Char() { val = TYPE_CHAR; size = 1; }
 
         virtual void printAST(std::ostream &out) const override { out << "Char()"; }
         virtual std::string getName() const override { return "Char()"; }
@@ -81,7 +83,7 @@ class Char : public Type {
 
 class Real : public Type {
     public:
-        Real() { val = TYPE_REAL; }
+        Real() { val = TYPE_REAL; size = 8; }
 
         virtual void printAST(std::ostream &out) const override { out << "Real()"; }
         virtual std::string getName() const override { return "Real()"; }
@@ -91,7 +93,7 @@ class Real : public Type {
 
 class Boolean : public Type {
     public:
-        Boolean() { val = TYPE_BOOLEAN; }
+        Boolean() { val = TYPE_BOOLEAN; size = 1; }
 
         virtual void printAST(std::ostream &out) const override { out << "Boolean()"; }
         virtual std::string getName() const override { return "Boolean()"; }
@@ -104,7 +106,7 @@ class Array : public Type {
         std::shared_ptr<Type> arType;
         int size;
     public:
-        Array(std::shared_ptr<Type> t, int s = -1) : arType(t) { val = TYPE_ARRAY; size = (s > 0) ? s : -1; }
+        Array(std::shared_ptr<Type> t, int s = -1) : arType(t) { val = TYPE_ARRAY; size = (s > 0) ? s : -1; size = s * t->getSize(); }
 
         virtual void printAST(std::ostream &out) const override {
             out << "Array(";
@@ -130,7 +132,7 @@ class Pointer : public Type {
     private:
         std::shared_ptr<Type> pType;
     public:
-        Pointer(std::shared_ptr<Type> t) : pType(t) { val = TYPE_POINTER; }
+        Pointer(std::shared_ptr<Type> t) : pType(t) { val = TYPE_POINTER; size = 8; }
 
         virtual std::shared_ptr<Type> getPointerType() override { return pType; }
         virtual void printAST(std::ostream &out) const override { out << "Pointer(type=" << *pType << ")"; }
