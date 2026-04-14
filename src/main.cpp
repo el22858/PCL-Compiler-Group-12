@@ -33,7 +33,7 @@ void initLibs() {
 	id = std::make_unique<Id>("s");
 	iL = std::make_unique<IdList>();
 	iL->append(std::move(id));
-	f = std::make_unique<Formal>(std::move(iL), std::make_unique<Array>(std::make_unique<Char>()));
+	f = std::make_unique<Formal>(std::move(iL), std::make_unique<Array>(std::make_unique<Char>()), true);
 	fL = std::make_unique<FormalList>();
 	fL->append(std::move(f));
 	st.insertFormal("writeString", std::make_unique<TypeProc>(), std::move(fL));

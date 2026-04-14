@@ -47,6 +47,8 @@ class Type : public AST {
         virtual int getSize() { return size; }
         virtual std::shared_ptr<Type> getPointerType() { return nullptr; }
         virtual std::shared_ptr<Type> getArrayType() { return nullptr; }
+        virtual std::string getNameNoSize() const { return getName(); }
+
 };
 
 
@@ -116,11 +118,17 @@ class Array : public Type {
         virtual std::string getName() const override {
             std::string s = "Array(";
             if (size > 0) {
-                s +="size=" + size;
+                s +="size=" + std::to_string(size);
                 s += ", ";
             }
             s += "type=" + arType->getName() + ")";
 
+            return s;
+        }
+        virtual std::string getNameNoSize() const override {
+            std::string s = "Array(";
+            s += "type=" + arType->getName();
+            s += ")";
             return s;
         }
         virtual std::shared_ptr<Type> getArrayType() { return arType; }

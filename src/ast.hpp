@@ -141,6 +141,7 @@ class Block : public Stmt {
 		virtual void sem() override {
 			std::vector<int> L = quadEMPTYLIST();
 			for (auto &s : stmt_list->getList()) {
+				s->sem();
 				quadBACKPATCH(L, std::to_string(quadNEXTQUAD()));
 				L = s->quadNEXT;
 			}
@@ -662,7 +663,7 @@ class Formal : public AST {
 		std::shared_ptr<Type> type;
 		bool byRef;
 	public:
-		Formal(std::unique_ptr<IdList> iL, std::shared_ptr<Type> t, bool b) : idList(std::move(iL)), type(t), byRef(b) {}
+		Formal(std::unique_ptr<IdList> iL, std::shared_ptr<Type> t, bool b=false) : idList(std::move(iL)), type(t), byRef(b) {}
 
 		virtual void printAST(std::ostream &out) const override {
 			out << "Formal(";
@@ -750,7 +751,6 @@ class Call : public Stmt {
 			return res;
 		}
 		virtual void sem() override {
-
 			if (func) func->sem();
 
 			std::string funcName = id->getId();
@@ -771,7 +771,7 @@ class Call : public Stmt {
 				for (const auto &f : fL->getList()) {
 					int k = f->getIdList().size();
 					for (int j=0; j<k; j++) {
-						if ((f->getType()).compare(func->getList()[i]->type->getName()) || (!((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))) yyerror("Type mismatch.");
+						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) && (!(((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))) yyerror("Type mismatch.");
 
 						if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)){
 							std::string W = "$" + std::to_string(quadNEWTEMP());
@@ -783,11 +783,13 @@ class Call : public Stmt {
 							func->getList()[i]->place = W;
 						}
 
-						if ((f->quadPARAMMODE().compare("V")==0) && f->getType().compare(func->getList()[i]->type->getName())){
+						if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
 							std::string W = "$" + std::to_string(quadNEWTEMP());
 							quadGENQUAD(":=", func->getList()[i]->place, "-", W);
 							quadGENQUAD("par", W, "V", "-");
 						} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
+
+						++i;
 					}
 				}
 			}
