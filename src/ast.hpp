@@ -371,11 +371,15 @@ class BinOp : public RVal {
 				expr1->sem();
 				if (!expr1->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean.");
 				quadBACKPATCH(expr1->quadFALSE, std::to_string(quadNEXTQUAD()));
-
+				
 				expr2->sem();
 				if (!expr2->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean.");
 				quadTRUE = quadMERGELISTS(expr1->quadTRUE, expr2->quadTRUE);
 				quadFALSE = expr2->quadFALSE;
+
+				type = std::make_shared<Boolean>();
+
+				// std::cout << "AYYYY YOOOOO" << std::endl;
 			} else if ((op.compare("<") == 0) || (op.compare(">") == 0) || (op.compare("<=") == 0) || (op.compare(">=") == 0)) {
 				expr1->sem();
 				expr2->sem();
@@ -526,7 +530,7 @@ class Id : public LVal {
 
 			place = id;
 
-			if(typeCheck(TYPE_BOOLEAN)) {
+			if(typeCheck(TYPE_BOOLEAN)) { // FIXME : this shoudln't appear for assignments
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("ifb", place, "-", "*");
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());

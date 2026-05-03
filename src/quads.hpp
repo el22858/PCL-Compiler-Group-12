@@ -32,22 +32,42 @@ inline std::ostream &operator<<(std::ostream &out, const std::vector<quad> &v) {
     return out;
 }
 
-int quadNEXTQUAD();
+extern std::vector<quad> finalQuadList;
+extern int quadNextTemp;
 
-void quadGENQUAD(std::string op, std::string x, std::string y, std::string z);
+inline int quadNEXTQUAD() { return finalQuadList.size() + 1; }
 
-int quadNEWTEMP();
+inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { finalQuadList.push_back(quad(op, x, y, z)); }
 
-std::vector<int> quadEMPTYLIST();
+inline int quadNEWTEMP() { return quadNextTemp++; }
 
-std::vector<int> quadMAKELIST(int x);
+inline std::vector<int> quadEMPTYLIST() {
+    std::vector<int> list;
+	return list;
+}
 
-std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2);
+inline std::vector<int> quadMAKELIST(int x) {
+    std::vector<int> list;
+	list.push_back(x);
+	return list;
+}
 
-void quadBACKPATCH(std::vector<int> l, std::string newAd);
+inline std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2) {
+	std::vector<int> l;
+
+	if (l1.size() >= l2.size()) {
+		l = l1;
+		l.insert(l.end(), l2.begin(), l2.end());
+	} else {
+		l = l2;
+		l.insert(l.begin(), l1.begin(), l1.end());
+	}
+	return l;
+}
+
+inline void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const auto &x : l) finalQuadList[x].setOp3(newAd); }
 
 // std::string quadADDRESSOF(std::unique_ptr<Expr> e);
 
-extern std::vector<quad> finalQuadList;
 
 #endif

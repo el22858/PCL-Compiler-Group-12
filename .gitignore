@@ -12,3 +12,7 @@ location.hpp
 *.sh
 
 *.imm
+*.asm
+
+src/test.cpp
+a.out

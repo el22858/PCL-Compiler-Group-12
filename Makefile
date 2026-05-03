@@ -17,7 +17,7 @@ pcl: src/lexer.o src/parser.o
 
 clean:
 	@clear
-	@rm -f src/lexer.cpp src/lexer.hpp src/parser.cpp src/parser.hpp src/parser.output src/*.o src/location.hpp *.imm
+	@rm -f src/lexer.cpp src/lexer.hpp src/parser.cpp src/parser.hpp src/parser.output src/*.o src/location.hpp *.imm *asm
 
 distclean: clean
 	@rm -f pcl

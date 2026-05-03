@@ -7,12 +7,14 @@
 #include "basic.hpp"
 #include "symbol.hpp"
 #include "ast.hpp"
+#include "opt.hpp"
 
 #include "parser.hpp"
 
 extern FILE *yyin;
 std::unique_ptr<Body> ast;
-std::string name;
+std::string name, assembly;
+std::vector<std::string> stringsUsed, libsUsed;
 
 void initLibs() {
 	std::unique_ptr<Id> id;
@@ -227,43 +229,16 @@ void initLibs() {
 std::vector<quad> finalQuadList;
 int quadNextTemp;
 
-int quadNEXTQUAD() { return finalQuadList.size() + 1; }
 
-void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { finalQuadList.push_back(quad(op, x, y, z)); }
-
-int quadNEWTEMP() { return quadNextTemp++; }
-
-std::vector<int> quadMAKELIST(int x) {
-	std::vector<int> list;
-	list.push_back(x);
-	return list;
+void prologue() {
+	assembly = "xseg\tsegment public 'code'\n\t\tassume cs:xseg, ds:xseg, ss:xseg\n\t\torg 100h\n";
+	assembly += "main\tproc near\n\t\tcall near ptr _" + ast->getBodyName() + "_1\n\t\tmov ax, 4C00h\n\t\tint 21h\nmain\tendp\n"; 
 }
-
-std::vector<int> quadEMPTYLIST() {
-	std::vector<int> list;
-	return list;
+void epilogue() {
+	for (const auto &l : libsUsed) assembly += "\t\textrn _" + l + "\n";
+	for (long unsigned int i = 1; i <= stringsUsed.size(); ++i) assembly += "@str_" + std::to_string(i) + "\tdb '" + stringsUsed[i] + "'\n";
+	assembly += "xseg\tends\n\t\tend main";
 }
-
-//std::vector<quad> quadMAKELIST(quad x) {
-//    std::vector<quad> list;
-//    list.push_back(x);
-//    return list;
-//}
-
-std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2) {
-	std::vector<int> l;
-
-	if (l1.size() >= l2.size()) {
-		l = l1;
-		l.insert(l.end(), l2.begin(), l2.end());
-	} else {
-		l = l2;
-		l.insert(l.begin(), l1.begin(), l1.end());
-	}
-	return l;
-}
-
-void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const auto &x : l) finalQuadList[x].setOp3(newAd); }
 
 int main(int argc, char** argv) {
 	yyin = fopen(argv[1], "r");
@@ -286,20 +261,20 @@ int main(int argc, char** argv) {
 
 	st.exitScope();
 
-	int printedIntermediate = 0;
+	int printIMM = 0, printASS = 0, opt = 0;
 
-	for (int i=1; i<argc; ++i) {
+	for (int i=2; i<argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 				case 'i':
-					std::cout << finalQuadList;
-					printedIntermediate = 1;
+					printIMM = 1;
 					break;
-
                 case 'O':
-                
+					opt = 1;
+					break;
                 case 'f':
-                
+					printASS = 1;
+					break;
                 case 'o':
 
 				default:
@@ -307,9 +282,23 @@ int main(int argc, char** argv) {
 			}
 		}
 	}
-	if (!printedIntermediate){
+
+	if (opt) optimize();
+
+	if (printIMM) std::cout << finalQuadList;
+	else {
 		std::string intermediateOutput = "./" + ast->getBodyName() + ".imm";
 		std::ofstream imFile(intermediateOutput);
 		imFile << finalQuadList;
+	}
+
+	prologue();
+	epilogue();
+
+	if (printASS) std::cout << assembly;
+	else {
+		std::string assOutput = "./" + ast->getBodyName() + ".asm";
+		std::ofstream asFile(assOutput);
+		asFile << assembly;
 	}
 }
