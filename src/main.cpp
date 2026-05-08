@@ -228,6 +228,7 @@ void initLibs() {
 
 std::vector<quad> finalQuadList;
 int quadNextTemp;
+bool hasChanged;
 
 
 void prologue() {
@@ -258,6 +259,7 @@ int main(int argc, char** argv) {
 	st.insertParent(name);
 	initLibs();
 	ast->sem();
+	ast->igen();
 
 	st.exitScope();
 

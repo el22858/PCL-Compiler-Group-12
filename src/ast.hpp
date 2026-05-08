@@ -399,6 +399,7 @@ class BinOp : public RVal {
 				quadGENQUAD(op, expr1->place, expr2->place, place);
 			} else if (op.compare("and") == 0) {
 				expr1->igen();
+				// quadGENQUAD("dude", "go", "to", std::to_string(quadNEXTQUAD()));
 				quadBACKPATCH(expr1->quadTRUE, std::to_string(quadNEXTQUAD()));
 
 				expr2->igen();
@@ -551,7 +552,7 @@ class Id : public LVal {
 		std::string getId() { return id; }
 
 		virtual void igen() {
-			if (typeCheck(TYPE_BOOLEAN)) { // FIXME : this shoudln't appear for assignments
+			if (typeCheck(TYPE_BOOLEAN)) {
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("jump", "-", "-", "*");
@@ -769,8 +770,10 @@ class Call : public Stmt {
 	private:
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
+		std::shared_ptr<FormalList> fL;
+		bool isProc;
 	public:
-		Call(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)) {}
+		Call(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr), isProc(false) {}
 
 		virtual void printAST(std::ostream &out) const override {
 			out << "Call(";
@@ -794,7 +797,6 @@ class Call : public Stmt {
 			st.lookup(funcName); /* Will throw error if it doesn't exist */
 			if (!st.isFormal(funcName)) yyerror("Can't be called.");
 
-			std::shared_ptr<FormalList> fL;
 			fL = st.getParams(funcName);
 
 			int i = 0, expArgs = 0, actArgs = 0;
@@ -809,42 +811,49 @@ class Call : public Stmt {
 					int k = f->getIdList().size();
 					for (int j=0; j<k; j++) {
 						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) && (!(((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))) yyerror("Type mismatch.");
-
-						if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)){
-							std::string W = "$" + std::to_string(quadNEWTEMP());
-							quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
-							quadGENQUAD(":=", "true", "-", W);
-							quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD()+2));
-							quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
-							quadGENQUAD(":=", "false", "-", W);
-							func->getList()[i]->place = W;
-						}
-
-						if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
-							std::string W = "$" + std::to_string(quadNEWTEMP());
-							quadGENQUAD(":=", func->getList()[i]->place, "-", W);
-							quadGENQUAD("par", W, "V", "-");
-						} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
-
-						++i;
 					}
 				}
 			}
 
-            if (st.lookup(id->getId())->type->getType() != TYPE_PROC) {
-                std::string W = "$" + std::to_string(quadNEWTEMP());
-                quadGENQUAD("par", "RET", W, "-");
-            }
-			quadGENQUAD("call", "-", "-", funcName);
-            quadNEXT = quadEMPTYLIST();
-
+			isProc = (st.lookup(id->getId())->type->getType() == TYPE_PROC);
 
 			st.refreshFormals(funcName, fL);
 		}
 
 		virtual void igen() override {
+			int i = 0;
 			if (func) func->igen();
-			// FIXME ??????
+
+			if (!fL->isEmpty()) {
+				for (const auto &f : fL->getList()) {
+					if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)) {
+						std::string W = "$" + std::to_string(quadNEWTEMP());
+						quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
+						quadGENQUAD(":=", "true", "-", W);
+						quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
+
+						quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
+						quadGENQUAD(":=", "false", "-", W);
+						func->getList()[i]->place = W;
+					}
+
+					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
+						std::string W = "$" + std::to_string(quadNEWTEMP());
+						quadGENQUAD(":=", func->getList()[i]->place, "-", W);
+						quadGENQUAD("par", W, "V", "-");
+					} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
+
+					++i;
+				}
+			}
+
+			if (!isProc) {
+                std::string W = "$" + std::to_string(quadNEWTEMP());
+                quadGENQUAD("par", "RET", W, "-");
+            }
+
+			quadGENQUAD("call", "-", "-", id->getId());
+			quadNEXT = quadEMPTYLIST();
 		}
 };
 
@@ -853,8 +862,10 @@ class CallRVal : public RVal {
 	private:
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
+		std::shared_ptr<FormalList> fL;
+
 	public:
-		CallRVal(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)) {}
+		CallRVal(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr) {}
 
 		virtual void printAST(std::ostream &out) const override {
 			out << "CallRVal(";
@@ -878,7 +889,6 @@ class CallRVal : public RVal {
 			st.lookup(funcName); /* Will throw error if it doesn't exist */
 			if (!st.isFormal(funcName)) yyerror("Can't be called.");
 
-			std::shared_ptr<FormalList> fL;
 			fL = st.getParams(funcName);
 
 			int i = 0, expArgs = 0, actArgs = 0;
@@ -893,37 +903,45 @@ class CallRVal : public RVal {
 					int k = f->getIdList().size();
 					for (int j=0; j<k; j++) {
 						if ((f->getType()).compare(func->getList()[i]->type->getName()) || ((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER)))) yyerror("Type mismatch.");
-
-						if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)){
-							std::string W = "$" + std::to_string(quadNEWTEMP());
-							quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
-							quadGENQUAD(":=", "true", "-", W);
-							quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD()+2));
-							quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
-							quadGENQUAD(":=", "false", "-", W);
-							func->getList()[i]->place = W;
-						}
-						
-						if ((f->quadPARAMMODE().compare("V")==0) && f->getType().compare(func->getList()[i]->type->getName())){
-							std::string W = "$" + std::to_string(quadNEWTEMP());
-							quadGENQUAD(":=", func->getList()[i]->place, "-", W);
-							quadGENQUAD("par", W, "V", "-");
-						} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
 					}
 				}
 			}
 			type = std::move(st.lookup(funcName)->type);
 
-			place = "$" + std::to_string(quadNEWTEMP());
-			quadGENQUAD("par", "RET", place, "-");
-			quadGENQUAD("call", "-", "-", funcName);
-
-			st.refreshFormals(funcName, std::move(fL));
+			st.refreshFormals(funcName, fL);
 		}
 
 		virtual void igen() override {
+			int i = 0;
 			if (func) func->igen();
-			// FIXME ??????
+
+			if (!fL->isEmpty()) {
+				for (const auto &f : fL->getList()) {
+					if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)) {
+						std::string W = "$" + std::to_string(quadNEWTEMP());
+						quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
+						quadGENQUAD(":=", "true", "-", W);
+						quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
+
+						quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
+						quadGENQUAD(":=", "false", "-", W);
+						func->getList()[i]->place = W;
+					}
+
+					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
+						std::string W = "$" + std::to_string(quadNEWTEMP());
+						quadGENQUAD(":=", func->getList()[i]->place, "-", W);
+						quadGENQUAD("par", W, "V", "-");
+					} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
+
+					++i;
+				}
+			}
+
+			quadGENQUAD("call", "-", "-", id->getId());
+			place = "$" + std::to_string(quadNEWTEMP());
+			quadGENQUAD("par", "RET", place, "-");
+			quadGENQUAD("call", "-", "-", id->getId());
 		}
 };
 
@@ -958,7 +976,7 @@ class Dispose: public Stmt {
 		}
 
 		virtual void igen() override {
-			lVal->igen(); // FIXME lVal is Nil at this point
+			// lVal->igen(); // FIXME lVal is Nil at this point
 
 			quadGENQUAD("par", lVal->place, "R", "-");
 			quadGENQUAD("call", "-", "-", "dispose");
@@ -1030,10 +1048,15 @@ class Assign: public Stmt {
 					yyerror(err);
 				}
 			}
+		}
 
+		virtual void igen() override {
+			expr->igen();
 			if (expr->typeCheck(TYPE_BOOLEAN)) {
 				quadBACKPATCH(expr->quadTRUE, std::to_string(quadNEXTQUAD()));
+				// for (const auto &v : expr->quadTRUE) std::cout << v << std::endl;
 				quadGENQUAD(":=", "true", "-", lval->place);
+				quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
 				quadBACKPATCH(expr->quadFALSE, std::to_string(quadNEXTQUAD()));
 				quadGENQUAD(":=", "false", "-", lval->place);
 			} else quadGENQUAD(":=", expr->place, "-", lval->place);
@@ -1048,7 +1071,8 @@ class Return: public Stmt {
 
 		virtual void printAST(std::ostream &out) const override { out << "Return()"; }
 		virtual std::string getName() const override { return "Return()"; }
-		virtual void sem() override { quadGENQUAD("ret", "-", "-", "-"); }
+		virtual void sem() override {  }
+		virtual void igen() override { quadGENQUAD("ret", "-", "-", "-"); }
 };
 
 
@@ -1090,19 +1114,24 @@ class New: public Stmt {
 				expr->sem();
 
 				if (expr->type->getType() == TYPE_RES) expr->type = std::move(st.lookup("result")->type);
-				if (expr->type->getType() != TYPE_INTEGER) yyerror("Expected integer.");
+				if (expr->type->getType() != TYPE_INTEGER) yyerror("Expected integer.");	
+			}
 
+			st.makeNew(lVal->getName());
+		}
+
+		void igen() override {
+			// lVal->igen(); // FIXME ??? idk if we want this or not
+			if (expr) {
+				expr->igen();
 				int s = lVal->type->getSize();
 				std::string W = "$" + std::to_string(quadNEWTEMP());
 				quadGENQUAD("*", expr->place, std::to_string(s), W);
 				quadGENQUAD("par", W, "V", "-");
-				
 			} else quadGENQUAD("par", std::to_string(lVal->type->getSize()), "V", "-");
 			quadGENQUAD("par", lVal->place, "RET", "-");
 			quadGENQUAD("call", "-", "-", "new");
 			quadNEXT = quadEMPTYLIST();
-
-			st.makeNew(lVal->getName());
 		}
 };
 
@@ -1128,8 +1157,10 @@ class Goto: public Stmt {
 			std::string label = id->getId();
 			if (!st.isLabel(label)) yyerror("Label Not Found.\n");
 			else if (!st.validLabel(label)) yyerror("Label has no Statement.\n");
+		}
 
-			quadGENQUAD("jumpl", "-", "-", label);
+		virtual void igen() override {
+			quadGENQUAD("jumpl", "-", "-", id->getId());
 			quadNEXT = quadEMPTYLIST();
 		}
 };
@@ -1158,6 +1189,8 @@ class Decl : public AST {
 			return res;
 		}
 		virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getId(), type); }
+
+		virtual void igen() override {  }
 };
 
 
@@ -1192,6 +1225,8 @@ class DeclList : public AST {
 			return res;
 		}
 		virtual void sem() override { for (auto &d : decList) d->sem(); }
+
+		virtual void igen() override { for (auto &d : decList) d->igen(); /* just in case I change Decl */ }
 };
 
 
@@ -1240,10 +1275,10 @@ class Procedure : public Header {
 			} else st.insertFormal(id->getId(), std::make_unique<TypeProc>(), formalList);
 			st.enterScope();
 			formalList->sem();
-			// quadGENQUAD("unit", id->getId(), "-", "-");
-			// quadGENQUAD("endu", id->getId(), "-", "-");
 		}
 		virtual void semForward() override { st.insertFormalForward(id->getId(), std::make_unique<TypeProc>(), std::move(formalList)); }
+
+		virtual void igen() {  }
 };
 
 
@@ -1291,6 +1326,7 @@ class Function : public Header {
 		}
 		virtual void semForward() override { st.insertFormalForward(id->getId(), type, formalList); }
 
+		virtual void igen() override {  }
 };
 
 
@@ -1340,6 +1376,15 @@ class Local : public AST {
 				st.exitScope();
 			} else if (localType.compare("forward") == 0) hdr->semForward();
 		}
+
+		virtual void igen() override {
+			if (localType.compare("var") == 0) dList->igen();
+			else if (localType.compare("label") == 0) lbl->igen();
+			else if (localType.compare("forp") == 0) {
+				hdr->igen();
+				body->igen();
+			} else if (localType.compare("forward") == 0) hdr->igen();
+		}
 };
 
 
@@ -1373,6 +1418,8 @@ class LocalList : public AST {
 			return res;
 		}
 		virtual void sem() override { for (auto &l : localList) l->sem(); }
+
+		virtual void igen() override { for (auto &l : localList) l->igen(); }
 };
 
 
@@ -1407,11 +1454,16 @@ class Body : public Stmt {
 
 			// st.enterScope();
 			localList->sem();
-			quadGENQUAD("unit", name, "-", "-");
 			block->sem();
+			// st.exitScope();
+		}
+
+		virtual void igen() override {
+			localList->igen();
+			quadGENQUAD("unit", name, "-", "-");
+			block->igen();
 			quadBACKPATCH(block->quadNEXT, std::to_string(quadNEXTQUAD()));
 			quadGENQUAD("endu", name, "-", "-");
-			// st.exitScope();
 		}
 };
 
@@ -1439,8 +1491,9 @@ class Reference : public RVal {
 			type = std::make_shared<Pointer>(std::move(lVal->type));
 
 			place = "INCOMPLETE(" + lVal->place + ")";
-			// need to implement quadADDRESSOF
 		}
+
+		virtual void igen() override { /* FIXME: need to implement quadADDRESSOF */ }
 };
 
 
@@ -1458,6 +1511,8 @@ class Result : public LVal {
 
 			place = "$$";
 		}
+
+		virtual void igen() override {  }
 };
 
 
@@ -1478,6 +1533,13 @@ class Deref : public LVal {
 			std::string W = "$" + quadNEWTEMP();
 			quadGENQUAD(":=", expr->place, "-", W);
 			place ="[" + W + "]";
+		}
+
+		virtual void igen() override {
+			expr->igen();
+			std::string W ="$" + quadNEWTEMP();
+			quadGENQUAD(":=", expr->place, "-", W);
+			place = "[" + W + "]";
 		}
 };
 

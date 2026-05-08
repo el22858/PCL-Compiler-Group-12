@@ -29,7 +29,7 @@ inline std::ostream &operator<<(std::ostream &out, const quad &q) {
 }
 
 inline std::ostream &operator<<(std::ostream &out, const std::vector<quad> &v) {
-    for (const auto q : v) out << q << std::endl;
+    for (const auto &q : v) out << q << std::endl;
     return out;
 }
 
@@ -66,7 +66,7 @@ inline std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2)
 	return l;
 }
 
-inline void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const auto &x : l) finalQuadList[x].setOp3(newAd); }
+inline void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const auto &x : l) finalQuadList[x-1].setOp3(newAd); /* CAN'T BELIEVE I FORGOT THAT THIS IS ZERO-INDEXED DAMMITALL */ }
 
 // std::string quadADDRESSOF(std::unique_ptr<Expr> e);
 

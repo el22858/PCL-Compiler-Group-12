@@ -12,7 +12,7 @@ class AST {
         
         virtual std::string getName() const { return "AST()"; }
 
-        virtual void igen() = 0;
+        virtual void igen() {}
 };
 
 

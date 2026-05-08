@@ -155,19 +155,19 @@ inline void constantFolding() {
 }
 
 inline void cleanup() {
-    for (int i = 0; i < finalQuadList.size(); ++i) {
-        if (finalQuadList[i].getOpname().compare("cleanup") == 0) {
-            // std::cout << "CLEANUP TIME" << std::endl;
-            finalQuadList.erase(finalQuadList.begin() + i);
-            for (auto &q : finalQuadList) {
-                if (is_number(q.getOp3())) {
-                    int z = std::stoi(q.getOp3());
-                    if (z > i + 1) q.setOp3(std::to_string(z-1));
-                }
-            }
-            i--;
-        }
-    }
+    // for (int i = 0; i < finalQuadList.size(); ++i) {
+    //     if (finalQuadList[i].getOpname().compare("cleanup") == 0) {
+    //         // std::cout << "CLEANUP TIME" << std::endl;
+    //         finalQuadList.erase(finalQuadList.begin() + i);
+    //         for (auto &q : finalQuadList) {
+    //             if (is_number(q.getOp3())) {
+    //                 int z = std::stoi(q.getOp3());
+    //                 if (z > i + 1) q.setOp3(std::to_string(z-1));
+    //             }
+    //         }
+    //         i--;
+    //     }
+    // }
 }
 
 inline void optimize() {
