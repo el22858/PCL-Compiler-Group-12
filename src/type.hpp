@@ -49,6 +49,7 @@ class Type : public AST {
         virtual std::shared_ptr<Type> getArrayType() { return nullptr; }
         virtual std::string getNameNoSize() const { return getName(); }
 
+        virtual void igen() override {  }
 };
 
 

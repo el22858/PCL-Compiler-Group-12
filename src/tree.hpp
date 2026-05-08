@@ -11,6 +11,8 @@ class AST {
         virtual void printAST(std::ostream &out) const = 0;
         
         virtual std::string getName() const { return "AST()"; }
+
+        virtual void igen() = 0;
 };
 
 

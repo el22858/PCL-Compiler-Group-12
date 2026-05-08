@@ -13,6 +13,13 @@ inline bool is_number(const std::string& s) {
     return !s.empty() && it == s.end();
 }
 
+inline bool is_real(const std::string &s) {
+    if (s.empty()) return false;
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && (std::isdigit(*it) || (*it == '.')));
+    return (it == s.end());
+}
+
 inline void algebraSimple() {
     for (auto &q : finalQuadList) {
         std::string op = q.getOpname();
