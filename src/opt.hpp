@@ -288,15 +288,18 @@ inline void globalOpts() {}
 
 
 inline void peepOpts() {
-    for (auto &q : finalQuadList) {
+    for (int i=0; i < finalQuadList.size(); ++i) {
+        auto &q = finalQuadList[i];
         if (q.getOpname().compare("jump") == 0) {
             int z = std::stoi(q.getOp3());
-            if (quadIsJump(finalQuadList[z-1])) quadCOPY(q, finalQuadList[z-1]);
+            if (finalQuadList[i+1].getTag() == z) q.setOpname("cleanup");
+            else if (quadIsJump(finalQuadList[z-1])) quadCOPY(q, finalQuadList[z-1]);
         } else if (q.getOpname().compare("jumpl") == 0) {
             std::string label = q.getOp3();
-            for (int i = 0; i < finalQuadList.size(); ++i) {
-                if ((finalQuadList[i].getOpname().compare("label") == 0) && (finalQuadList[i].getOp3().compare(label) == 0)) {
-                    if (quadIsJump(finalQuadList[i+1])) quadCOPY(q, finalQuadList[i+1]);
+            for (int j = 0; j < finalQuadList.size(); ++j) {
+                if ((finalQuadList[j].getOpname().compare("label") == 0) && (finalQuadList[j].getOp3().compare(label) == 0)) {
+                    if (j == i+1) q.setOpname("cleanup");
+                    else if (quadIsJump(finalQuadList[j+1])) quadCOPY(q, finalQuadList[j+1]);
                     break;
                 }
             }
