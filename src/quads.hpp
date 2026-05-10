@@ -5,17 +5,43 @@
 #include <string>
 #include <vector>
 
+
+// Copied from https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
+inline bool is_number(const std::string& s) {
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
+
+// inline bool is_real(const std::string &s) {
+//     if (s.empty()) return false;
+//     std::string::const_iterator it = s.begin();
+//     while (it != s.end() && (std::isdigit(*it) || (*it == '.')));
+//     return (it == s.end());
+// }
+
+inline bool is_tmp(const std::string &s) {
+    if (s.empty()) return false;
+    std::string::const_iterator it = s.begin();
+    if (*it != '$') return false;
+    while ((++it != s.end()) && (std::isdigit(*it)));
+    return it == s.end();
+}
+
+
 struct quad {
     int tag;
     std::string op, x, y, z;
+    bool hasReal;
 
-    quad(int t, std::string opname, std::string op1, std::string op2, std::string op3) : tag(t), op(opname), x(op1), y(op2), z(op3) {}
+    quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false) : tag(t), op(opname), x(op1), y(op2), z(op3), hasReal(hR) {}
 
-    int getTag() { return tag; }
-    std::string getOpname() { return op; }
-    std::string getOp1() { return x; }
-    std::string getOp2() { return y; }
-    std::string getOp3() { return z; }
+    int getTag() const { return tag; }
+    std::string getOpname() const { return op; }
+    std::string getOp1() const { return x; }
+    std::string getOp2() const { return y; }
+    std::string getOp3() const { return z; }
+    bool withReal() const { return hasReal; }
 
     void setOpname(std::string opname) { op = opname; }
     void setOp1(std::string op1) { x = op1; }
@@ -25,6 +51,7 @@ struct quad {
 
 inline std::ostream &operator<<(std::ostream &out, const quad &q) {
     out << q.tag << ": " << q.op << ", " << q.x << ", " << q.y << ", " << q.z;
+    // out << "quadGENQUAD(\"" << q.op << "\", \"" << q.x << "\", \"" << q.y << "\", \"" << q.z << "\");"; 
     return out;
 }
 
@@ -68,7 +95,22 @@ inline std::vector<int> quadMERGELISTS(std::vector<int> l1, std::vector<int> l2)
 
 inline void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const auto &x : l) finalQuadList[x-1].setOp3(newAd); /* CAN'T BELIEVE I FORGOT THAT THIS IS ZERO-INDEXED DAMMITALL */ }
 
-// std::string quadADDRESSOF(std::unique_ptr<Expr> e);
+inline std::string quadADDRESSOF(std::string x) {
+    std::string res = "";
+    if ((x[0] == '[') &&  (x[x.length() - 1] == ']')) {
+        for (int i = 1; i < x.length() - 1; ++i) res += x[i];
+    } else res = "{" + x + "}";
+    return res;
+}
+
+inline void quadCOPY(quad &q1, const quad &q2) {
+    q1.setOpname(q2.getOpname());
+    q1.setOp1(q2.getOp1());
+    q1.setOp2(q2.getOp2());
+    q1.setOp3(q2.getOp3());
+}
+
+inline bool quadIsJump(const quad &q) { return ((q.getOpname().compare("jump") == 0) || q.getOpname().compare("jumpl") == 0); }
 
 
 #endif

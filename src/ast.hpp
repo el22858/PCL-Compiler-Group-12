@@ -1490,10 +1490,10 @@ class Reference : public RVal {
 			if (lVal->typeCheck(TYPE_RES)) lVal->type = std::move(st.lookup("result")->type);
 			type = std::make_shared<Pointer>(std::move(lVal->type));
 
-			place = "INCOMPLETE(" + lVal->place + ")";
+			place = quadADDRESSOF(lVal->place);
 		}
 
-		virtual void igen() override { /* FIXME: need to implement quadADDRESSOF */ }
+		virtual void igen() override {  }
 };
 
 
