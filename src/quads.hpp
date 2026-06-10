@@ -13,12 +13,19 @@ inline bool is_number(const std::string& s) {
     return !s.empty() && it == s.end();
 }
 
-// inline bool is_real(const std::string &s) {
-//     if (s.empty()) return false;
-//     std::string::const_iterator it = s.begin();
-//     while (it != s.end() && (std::isdigit(*it) || (*it == '.')));
-//     return (it == s.end());
-// }
+inline bool is_real(const std::string &s) {
+    if (s.empty()) return false;
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && (std::isdigit(*it))) ++it; // || (*it == '.')));
+    if (*(it++) != '.') return false;
+    while (it != s.end() && (std::isdigit(*it))) ++it; // || (*it == '.')));
+    if (it == s.end()) return true;
+    else if (*it != 'e') return false;
+    it++;
+    if ((*it == '+') || (*it == '-')) ++it;
+    while ((it != s.end()) && (std::isdigit(*it))) ++it;
+    return (it == s.end());
+}
 
 inline bool is_tmp(const std::string &s) {
     if (s.empty()) return false;
@@ -29,28 +36,30 @@ inline bool is_tmp(const std::string &s) {
 }
 
 
-struct quad {
-    int tag;
-    std::string op, x, y, z;
-    bool hasReal;
+class quad {
+    private:
+        int tag;
+        std::string op, x, y, z;
+        bool hasReal;
 
-    quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false) : tag(t), op(opname), x(op1), y(op2), z(op3), hasReal(hR) {}
+    public:
+        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false) : tag(t), op(opname), x(op1), y(op2), z(op3), hasReal(hR) {}
 
-    int getTag() const { return tag; }
-    std::string getOpname() const { return op; }
-    std::string getOp1() const { return x; }
-    std::string getOp2() const { return y; }
-    std::string getOp3() const { return z; }
-    bool withReal() const { return hasReal; }
+        int getTag() const { return tag; }
+        std::string getOpname() const { return op; }
+        std::string getOp1() const { return x; }
+        std::string getOp2() const { return y; }
+        std::string getOp3() const { return z; }
+        bool withReal() const { return hasReal; }
 
-    void setOpname(std::string opname) { op = opname; }
-    void setOp1(std::string op1) { x = op1; }
-    void setOp2(std::string op2) { y = op2; }
-    void setOp3(std::string op3) { z = op3; }
+        void setOpname(std::string opname) { op = opname; }
+        void setOp1(std::string op1) { x = op1; }
+        void setOp2(std::string op2) { y = op2; }
+        void setOp3(std::string op3) { z = op3; }
 };
 
 inline std::ostream &operator<<(std::ostream &out, const quad &q) {
-    out << q.tag << ": " << q.op << ", " << q.x << ", " << q.y << ", " << q.z;
+    out << q.getTag() << ": " << q.getOpname() << ", " << q.getOp1() << ", " << q.getOp2() << ", " << q.getOp3();
     // out << "quadGENQUAD(\"" << q.op << "\", \"" << q.x << "\", \"" << q.y << "\", \"" << q.z << "\");"; 
     return out;
 }

@@ -16,7 +16,8 @@ extern FILE *yyin;
 std::unique_ptr<Body> ast;
 std::string name, assembly;
 std::vector<std::string> stringsUsed, libsUsed;
-std::vector<int> tmpLine;
+std::vector<std::pair<std::string, int>> tmpLine;
+std::vector<int> labels, jumps;
 
 void initLibs() {
 	std::unique_ptr<Id> id;

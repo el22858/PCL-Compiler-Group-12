@@ -949,6 +949,7 @@ class CallRVal : public RVal {
 class Dispose: public Stmt {
 	private:
 		std::unique_ptr<LVal> lVal;
+		std::string oldPlace;
 		bool bracket;
 	public:
 		Dispose(std::unique_ptr<LVal> l, bool b) : lVal(std::move(l)), bracket(b) {}
@@ -972,13 +973,12 @@ class Dispose: public Stmt {
 
 			if (bracket && (lVal->type->getPointerType()->getType() != TYPE_ARRAY)) yyerror("Something something pointer to array.");
 
+			oldPlace = lVal->place;
 			lVal = std::move(std::make_unique<NilLVal>());
 		}
 
 		virtual void igen() override {
-			// lVal->igen(); // FIXME lVal is Nil at this point
-
-			quadGENQUAD("par", lVal->place, "R", "-");
+			quadGENQUAD("par", oldPlace, "R", "-");
 			quadGENQUAD("call", "-", "-", "dispose");
 			quadNEXT = quadEMPTYLIST();
 		}

@@ -1,20 +1,20 @@
-; Needs parameter to be moved to rax prior to call
+; Needs parameter to be moved to rax prior to the call
 
-    global _writeInteger
-    extern printf
+	global _writeInteger
+	extern printf
 
-    section .text
+	section .text
 _writeInteger:
-    push    rax
-    push    rcx
-    push    rdi
-    mov     rdi, format
-    mov     rsi, rax
-    xor     rax, rax
-    call    printf WRT ..plt
-    pop     rdi
-    pop     rcx
-    pop     rax
-    ret
+	push	rax
+	push	rcx
+	push	rdi
+	mov	rdi, format
+	mov	rsi, rax
+	xor	rax, rax
+	call	printf WRT ..plt
+	pop	rdi
+	pop	rcx
+	pop	rax
+	ret
 format:
-    db      "%ld", 0
+	db	"%ld", 0

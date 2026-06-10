@@ -22,3 +22,11 @@
 ;                 pop rdi
 ;                 pop rbp
 ;                 ret
+
+        global _writeString
+        extern puts
+
+        section .text
+_writeString:
+        call    puts WRT ..plt
+        ret

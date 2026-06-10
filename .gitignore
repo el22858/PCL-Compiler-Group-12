@@ -17,4 +17,4 @@ location.hpp
 src/test.cpp
 a.out
 
-libs.a
+*.a

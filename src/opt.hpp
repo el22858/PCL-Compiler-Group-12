@@ -22,30 +22,33 @@ inline void makeBlocks() { // FIXME: is missing out on quite a few jumps, possib
 
     for (const auto &q : finalQuadList) {
         std::string op = q.getOpname();
-        if (op.compare("label") == 0) labels.push_back(q.getTag());
-        else if (op.compare("unit") == 0) labels.push_back(q.getTag()); 
+        if (op.compare("label") == 0) labels.push_back(q.getTag()-1);
+        else if (op.compare("unit") == 0) labels.push_back(q.getTag()-1); 
 
         else if (op.compare("jump") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
+        } else if (op.compare("ifb") == 0) {
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("=") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<>") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<=") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare(">") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare(">=") == 0) {
-            jumps.push_back(q.getTag());
-            labels.push_back(std::stoi(q.getOp3()));
+            jumps.push_back(q.getTag()-1);
+            labels.push_back(std::stoi(q.getOp3())-1);
         }
     }
 
@@ -54,7 +57,7 @@ inline void makeBlocks() { // FIXME: is missing out on quite a few jumps, possib
     // if (it < labels.end()) std::cout << "WUT" << std::endl;
 
     labels.erase(it, labels.end());
-    for (const auto &l : labels) std::cout << l << std::endl;
+    // for (const auto &l : labels) std::cout << l << std::endl;
     // while (it != labels.end()) {
         //     std::cout << "dude" << std::endl;
         //     labels.erase(it);
@@ -237,7 +240,7 @@ inline void commonSubElim(int start = 0, int end = finalQuadList.size()-1) {
     }
 }
 
-inline void copyProp(int start = 0, int end = finalQuadList.size()-1) {
+inline void localCopyProp(int start = 0, int end = finalQuadList.size()-1) {
     for (int i = start; i<= end; ++i) {
         auto &q = finalQuadList[i];
         if (q.getOpname().compare(":=") == 0) {
@@ -272,6 +275,8 @@ inline void revProp(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void localOpts(int start = 0, int end = finalQuadList.size()-1) {
+    std::cout << start << " " << end << std::endl;
+
     singleAss(start, end);
     while (hasChanged){
         // std::cout << "Trying again." << std::endl;
@@ -279,12 +284,31 @@ inline void localOpts(int start = 0, int end = finalQuadList.size()-1) {
         algebraSimple(start, end);
         constantFolding(start, end);
         commonSubElim(start, end);
+        localCopyProp(start, end);
     }
     // revProp(start, end);
 }
 
+inline void cleanup() {
+    for (int i = 0; i < finalQuadList.size(); ++i) {
+        if (finalQuadList[i].getOpname().compare("cleanup") == 0) {
+            // std::cout << "CLEANUP TIME" << std::endl;
+            finalQuadList.erase(finalQuadList.begin() + i);
+            // for (auto &q : finalQuadList) {
+            //     if (is_number(q.getOp3())) {
+            //         int z = std::stoi(q.getOp3());
+            //         if (z > i + 1) q.setOp3(std::to_string(z-1));
+            //     }
+            // }
+            i--;
+        }
+    }
+}
 
-inline void globalOpts() {}
+inline void globalOpts() { //FIXME
+    /* globalCopyProp(); globalAssassin(); */
+    cleanup();
+}
 
 
 inline void peepOpts() {
@@ -305,24 +329,10 @@ inline void peepOpts() {
             }
         }
     }
+
+    cleanup();
 }
 
-
-inline void cleanup() {
-    for (int i = 0; i < finalQuadList.size(); ++i) {
-        if (finalQuadList[i].getOpname().compare("cleanup") == 0) {
-            // std::cout << "CLEANUP TIME" << std::endl;
-            finalQuadList.erase(finalQuadList.begin() + i);
-            // for (auto &q : finalQuadList) {
-            //     if (is_number(q.getOp3())) {
-            //         int z = std::stoi(q.getOp3());
-            //         if (z > i + 1) q.setOp3(std::to_string(z-1));
-            //     }
-            // }
-            i--;
-        }
-    }
-}
 
 
 
@@ -345,8 +355,11 @@ inline void optimize() {
     }
     // findTmps();
 
-
     cleanup();
+    // globalOpts(); // currently ddoes nothing, might not implement
+    peepOpts();
+
+
 }
 
 #endif
