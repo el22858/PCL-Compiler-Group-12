@@ -286,7 +286,10 @@ int main(int argc, char** argv) {
 		imFile << finalQuadList;
 	}
 
+	libsUsed.push_back("writeString");
+	stringsUsed.push_back("Hello world\n");
 	prologue();
+	translate(finalQuadList);
 	epilogue();
 
 	if (printASS) std::cout << assembly;
