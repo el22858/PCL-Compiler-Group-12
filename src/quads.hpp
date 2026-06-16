@@ -56,6 +56,7 @@ class quad {
         void setOp1(std::string op1) { x = op1; }
         void setOp2(std::string op2) { y = op2; }
         void setOp3(std::string op3) { z = op3; }
+        void setReal(bool b) { hasReal = b; }
 };
 
 inline std::ostream &operator<<(std::ostream &out, const quad &q) {
@@ -74,7 +75,7 @@ extern int quadNextTemp;
 
 inline int quadNEXTQUAD() { return finalQuadList.size() + 1; }
 
-inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z)); }
+inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z, bool b = false) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z, b)); }
 
 inline int quadNEWTEMP() { return quadNextTemp++; }
 
@@ -117,6 +118,7 @@ inline void quadCOPY(quad &q1, const quad &q2) {
     q1.setOp1(q2.getOp1());
     q1.setOp2(q2.getOp2());
     q1.setOp3(q2.getOp3());
+    q1.setReal(q2.withReal());
 }
 
 inline bool quadIsJump(const quad &q) { return ((q.getOpname().compare("jump") == 0) || q.getOpname().compare("jumpl") == 0); }

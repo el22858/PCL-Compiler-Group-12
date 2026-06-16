@@ -330,8 +330,9 @@ class BinOp : public RVal {
 	private:
 		std::unique_ptr<Expr> expr1, expr2;
 		std::string op;
+		bool addReal;
 	public:
-		BinOp(std::unique_ptr<Expr> e1, std::string s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), expr2(std::move(e2)), op(s) {}
+		BinOp(std::unique_ptr<Expr> e1, std::string s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), expr2(std::move(e2)), op(s), addReal(false) {}
 
 		virtual void printAST(std::ostream &out) const override {
 			out << op << "(";
@@ -355,17 +356,25 @@ class BinOp : public RVal {
 				expr2->sem();
 				if (expr1->typeCheck(TYPE_INTEGER)) {
 					if (expr2->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
-					else if (expr2->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
+					else if (expr2->typeCheck(TYPE_REAL)) {
+						type = std::make_shared<Real>();
+
+						addReal = true;
+					}
 					else yyerror("Expected int or real.");
 				} else if (expr1->typeCheck(TYPE_REAL)) {
 					if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = std::make_shared<Real>();
 					else yyerror("Expected int or real.");
+					
+					addReal = true;
 				}
 			} else if (op.compare("/") == 0) {
 				expr1->sem();
 				expr2->sem();
 				if (((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL)))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Real>();
 				else yyerror("Expected int or real.");
+
+				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) addReal = true;
 			} else if ((op.compare("div") == 0) || (op.compare("mod") == 0)) {
 				expr1->sem();
 				expr2->sem();
@@ -383,11 +392,15 @@ class BinOp : public RVal {
 				expr2->sem();
 				if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Boolean>();
 				else yyerror("Expected int or real.");
+
+				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) addReal = true;
 			} else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
 				expr1->sem();
 				expr2->sem();
 				if (expr1->type->getName().compare(expr2->type->getName()) == 0) type = std::make_shared<Boolean>();
 				else yyerror("Type mismatch!");
+
+				if (expr1->typeCheck(TYPE_REAL) || (expr2->typeCheck(TYPE_REAL))) addReal = true;
 			}
 		}
 
@@ -396,7 +409,7 @@ class BinOp : public RVal {
 				expr1->igen();
 				expr2->igen();
 				place = "$" + std::to_string(quadNEWTEMP());
-				quadGENQUAD(op, expr1->place, expr2->place, place);
+				quadGENQUAD(op, expr1->place, expr2->place, place, addReal);
 			} else if (op.compare("and") == 0) {
 				expr1->igen();
 				// quadGENQUAD("dude", "go", "to", std::to_string(quadNEXTQUAD()));
@@ -417,7 +430,7 @@ class BinOp : public RVal {
 				expr2->igen();
 
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
-				quadGENQUAD(op, expr1->place, expr2->place, "*");
+				quadGENQUAD(op, expr1->place, expr2->place, "*", addReal);
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("jump", "-", "-", "*");
 			} else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
@@ -425,7 +438,7 @@ class BinOp : public RVal {
 				expr2->igen();
 
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
-				quadGENQUAD(op, expr1->place, expr2->place, "*");
+				quadGENQUAD(op, expr1->place, expr2->place, "*", addReal);
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("jump", "-", "-", "*");
 			}

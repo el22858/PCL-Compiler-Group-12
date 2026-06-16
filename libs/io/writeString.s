@@ -31,17 +31,13 @@
 _writeString:
 ;        call    puts WRT ..plt
 ;        ret
-        push	rax
-	push	rcx
-	push	rdi
-	mov	rdi, format
-	mov	rsi, rax
-	xor	rax, rax
-	call	printf WRT ..plt
-	pop	rdi
-	pop	rcx
-	pop	rax
-	ret
+        ;pop	rax
+		mov	rdi, format
+		mov	rsi, rax
+		xor	rax, rax
+		call	printf WRT ..plt
+		;pop		rax
+		ret
 
 
 format:         db "%s", 0 

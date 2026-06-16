@@ -286,9 +286,9 @@ int main(int argc, char** argv) {
 		imFile << finalQuadList;
 	}
 
-	libsUsed.push_back("writeString");
-	stringsUsed.push_back("Hello world\n");
-	prologue();
+	// libsUsed.push_back("writeString");
+	// stringsUsed.push_back("Hello world\n");
+	prologue(ast->getBodyName());
 	translate(finalQuadList);
 	epilogue();
 
