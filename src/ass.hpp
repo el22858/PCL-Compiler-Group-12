@@ -10,6 +10,9 @@
 extern std::unique_ptr<Body> ast;
 extern std::string assembly;
 extern std::vector<std::string> stringsUsed, libsUsed;
+extern int n_cur;
+static std::string ax = "eax", cx = "ecx", dx = "edx", st0 = "rax", st1 = "rcx", si = "rsi", bp = "rbp", sp = "rsp", al = "al", di = "di";
+
 
 
 inline void prologue(std::string mainName) {
@@ -30,16 +33,76 @@ inline void epilogue() {
 	}
 }
 
-inline void load(std::string R, std::string a) {
+inline void getAR(int n) {
+	assembly += "\t\tmov\trsi, word ptr [rbp + 4]";
+	for (int i=1; i<n_cur-n; ++i) assembly += "\t\tmov\trsi, word ptr [rsi + 4]";
+}
+
+inline void load(std::string R, std::string a, int a_n = 0, int a_off = 0, int a_size = 1, std::string type = "V") {
+	std::string size;
+	if (a_size == 1) size = "byte";
+	else if (a_size == 2) size = "word";
+	else if (a_size == 4) size = "dword";
+	else if (a_size == 8) size = "qword";
+
     if (is_number(a)) assembly += "\t\tmov\t\t" + R + ", " + a + "\n";
     else if (a.compare("true") == 0) assembly += "\t\tmov\t\t" + R + ", 1\n";
     else if (a.compare("false") == 0) assembly += "\t\tmov\t\t" + R + ", 0\n";
-	// ??? if a is char
+	else if ((a[0] == '\'') && (a[a.length()-1] == '\'')) {
+		if (a[1] != '\\') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)a[1]) + "\n";
+		else if (a[2] == 'n') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\n') + "\n";
+		else if (a[2] == 't') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\t') + "\n";
+		else if (a[2] == 'r') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\r') + "\n";
+		else if (a[2] == '0') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\0') + "\n";
+		else if (a[2] == '\\') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\\') + "\n";
+		else if (a[2] == '\'') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\'') + "\n";
+		else if (a[2] == '\"') assembly += "\t\tmov\t\t" + R + ", " + std::to_string((int)'\"') + "\n";
+	}
 	else if (a.compare("nil") == 0) assembly += "\t\tmov\t\t" + R + ", 0\n";
-    //FIXME: a lot of shit missing, probably wrong commands too
+	else if ((a[0] == '[') && (a[a.length()-1] == ']')) {
+		load(di, a.substr(1, a.length()-2), a_n, a_off, a_size, type);
+		assembly += "\t\tmov\t" + R + ", " + size + " ptr [" + si + "]\n";
+	} else if ((a[0] == '{') && (a[a.length()-1] == '}')) loadAddr(R, a);
+	else if (a_n == n_cur) {
+		if (type.compare("V") == 0) assembly += "\t\tmov\t" + R + ", " + size + " ptr [" + bp + " + " + std::to_string(a_off) + "]\n";
+		else {
+			assembly += "\t\tmov\t" + si + ", word ptr [" + bp + " + " + std::to_string(a_off) + "]\n";
+			assembly += "\t\tmov\t" + R + ", " + size + " ptr [" + si + "]\n";
+		}
+	} else {
+		getAR(a_n);
+		if (type.compare("V") == 0) assembly += "\t\tmov\t" + R + ", " + size + " ptr [" + bp + " + " + std::to_string(a_off) + "]\n";
+		else {
+			assembly += "\t\tmov\t" + si + ", word ptr [" + si + " + " + std::to_string(a_off) + "]\n";
+			assembly += "\t\tmov\t" + R + ", " + size + " ptr [" + si + "]\n";
+		}
+	}
 }
 
-inline void loadReal(std::string a) {}
+inline void loadReal(std::string a, int a_n = 0, int a_off = 0, int a_size = 8, std::string type = "V") {
+	std::string size;
+	if (a_size == 4) size = "dword";
+	else if (a_size == 8) size = "qword";
+
+	if (is_real(a))  assembly += "\t\tfld\t" + a + "\n";
+	else if ((a[0] == '[') && (a[a.length()-1] == ']')) {
+		load(di, a.substr(1, a.length()-2));
+		assembly += "\t\t???\t" + size + " ptr [" + di + "]\n";
+	} else if (a_n == n_cur) {
+		if (type.compare("V") == 0) assembly += "\t\t???\t" + size + " ptr [" + bp + " + " + std::to_string(a_off) + "]\n";
+		else {
+			assembly += "\t\tmov\t" + si + ", word ptr [" + bp + " + " + std::to_string(a_off) + "]\n";
+			assembly += "\t\t???\t" + size + " ptr [" + si + "]\n";
+		}
+	} else {
+		getAR(a_n);
+		if (type.compare("V") == 0) assembly += "\t\t???\t" + size + " ptr [" + si + " + " + std::to_string(a_off) + "]\n";
+		else {
+			assembly += "\t\tmov\t" + si + ", word ptr [" + si + " + " + std::to_string(a_off) +"]\n";
+			assembly += "\t\t???\t" + size + " ptr [" + di + "]\n";
+		}
+	}
+}
 
 inline void loadAddr(std::string R, std::string a) {}
 
@@ -47,26 +110,59 @@ inline void store(std::string R, std::string a) {}
 
 inline void storeReal(std::string a) {}
 
-inline std::string label(std::string z) {}
+inline std::string label(std::string z) {
+	if (is_number(z)) return "@" + z;
+	return "@????";
+}
 
-inline std::string name(std::string z) {}
+inline std::string endof(std::string x) { return "@???"; }
+
+inline std::string ass_name(std::string z) { return "_" + z + "_???"; }
+
+inline void updateAL(int n) {
+	if (n_cur < n) assembly += "\t\tpush\trbp";
+	else if (n_cur == n) assembly += "\t\tpush\tword ptr [rbp + 4]";
+	else {
+		getAR(n);
+		assembly += "\t\tpush\tword ptr [rsi + 4]";
+	}
+}
 
 inline void translate(std::vector<quad> fQL) {
-	std::string ax = "rax", cx = "rcx", dx = "rdx", st0 = "???", st1 = "???", sp = "rsi", bp = "rbp";
 
 	for (const auto &q : fQL) {
+		assembly += label(std::to_string(q.getTag())) + "\n";
 		std::string op = q.getOpname(), x = q.getOp1(), y = q.getOp2(), z = q.getOp3();
-		if (op.compare("call") == 0) assembly += "\t\tcall\t_" + z + "\n";
-		else if (op.compare("par") == 0) {
-			if (y.compare("V") == 0); // ??? FIXME
-			else {
+		if (op.compare("call") == 0) {
+			assembly += "\t\tsub\t" + sp + ", 2\n";
+			updateAL(q.getZdepth());
+			assembly += "\t\tcall\t" + ass_name(z) + "\n";
+			assembly += "\t\tadd\t" + sp + ", ???\n";
+		} else if (op.compare("par") == 0) {
+			if (y.compare("V") == 0) {
+				if (q.withReal()) {
+					loadReal(x);
+					assembly += "\t\tsub" + sp + ", 10\n";
+					assembly += "\t\tmov\t" + si + ", " + sp + "\n";
+					assembly += "\t\tfstp\ttbyte ptr [" + si + "]\n";
+				} else; // ???
+			} else {
 				loadAddr(sp, x);
 				assembly += "\t\tpush\tsi\n";
 			}
 		}
-		else if (op.compare("unit") == 0) assembly += "_" + q.getOp1() + ":\n";
-		else if (op.compare("endu") == 0) assembly += "\t\tret\n";
-		else if (op.compare("ret") == 0) assembly += "\t\tjmp\tendof(???)";
+		else if (op.compare("unit") == 0) {
+			n_cur = q.getXdepth();
+			assembly += ass_name(x) + "\n";
+			assembly += "\t\tpush\t" + bp + "\n";
+			assembly += "\t\tmov\t" + bp + ", " + sp + "\n";
+			assembly += "\t\tsub\t" + sp + ", ???\n";
+		} else if (op.compare("endu") == 0) {
+			assembly += endof(x) + ":";
+			assembly += "\t\tmov\t" + sp + ", " + bp + "\n";
+			assembly += "\t\tpop\t" + bp + "\n";
+			assembly += "\t\tret\n";
+		} else if (op.compare("ret") == 0) assembly += "\t\tjmp\t" + endof("???") + "\n";
 		else if (op.compare(":=") == 0) {
 			if (q.withReal()) {
 				loadReal(x);
@@ -222,7 +318,7 @@ inline void translate(std::vector<quad> fQL) {
 			}
 			assembly += "\t\t" + instr + "\t" + label(z) + "\n";
 		} else if (op.compare("ifb") == 0) {
-			load("al", x);
+			load(al, x);
 			assembly += "\t\tor\tal, al\n";
 			assembly += "\t\tjnz\t" + label(z);
 		} else if (op.compare("jump") == 0) assembly += "\t\tjmp\t" + label(z) + "\n";

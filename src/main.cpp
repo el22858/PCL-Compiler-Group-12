@@ -230,7 +230,7 @@ void initLibs() {
 
 
 std::vector<quad> finalQuadList;
-int quadNextTemp;
+int quadNextTemp, n_cur;
 bool hasChanged;
 
 int main(int argc, char** argv) {

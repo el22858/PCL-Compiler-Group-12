@@ -11,7 +11,7 @@
 
 struct STEntry {
 	std::shared_ptr<Type> type;
-	int offset;
+	int offset, n;
 	STEntry() {}
 	STEntry(std::shared_ptr<Type> t, int o) : type(t), offset(o) {}
 };
@@ -27,7 +27,7 @@ class Scope {
 		std::map<std::string , std::unique_ptr<Stmt>> lblStmt;
 		std::map<std::string , bool> isForm, label, isForward, isNewMap;
 		std::vector<std::string> localForp;
-		int offset;
+		int offset, n;
 
 		int next;
 		std::vector<quad> quadList;
@@ -113,8 +113,9 @@ class Scope {
 class SymbolTable {
 	private:
 		std::vector<Scope> scopes;
+		int n;
 	public:
-		SymbolTable() : scopes() {}
+		SymbolTable() : scopes(), n(0) {}
 
 		void insert(std::string id, std::shared_ptr<Type> t) { scopes.back().insert(id, t); }
 		void insertFormal(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, fL); }
@@ -155,9 +156,13 @@ class SymbolTable {
 
 		void enterScope() {
 			int o = scopes.empty() ? 0 : scopes.back().get_offset();
+			n++;
 			scopes.push_back(Scope(o));
 		}
-		void exitScope() { scopes.pop_back(); }
+		void exitScope() {
+			scopes.pop_back();
+			n--;
+		}
 
 		bool forwarded(std::string c) { return scopes.back().forwarded(c); }
 		void backward(std::string c) { scopes.back().backward(c); }

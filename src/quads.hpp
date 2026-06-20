@@ -40,10 +40,12 @@ class quad {
     private:
         int tag;
         std::string op, x, y, z;
+        int n_x, n_y, n_z;
+        int x_off, y_off, z_off;
         bool hasReal;
 
     public:
-        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false) : tag(t), op(opname), x(op1), y(op2), z(op3), hasReal(hR) {}
+        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false, int nx = 0, int xoff = 0, int ny = 0, int yoff = 0, int nz = 0, int zoff = 0) : tag(t), op(opname), x(op1), y(op2), z(op3), n_x(nx), n_y(ny), n_z(nz), x_off(xoff), y_off(yoff), z_off(zoff), hasReal(hR) {}
 
         int getTag() const { return tag; }
         std::string getOpname() const { return op; }
@@ -52,11 +54,26 @@ class quad {
         std::string getOp3() const { return z; }
         bool withReal() const { return hasReal; }
 
+
         void setOpname(std::string opname) { op = opname; }
         void setOp1(std::string op1) { x = op1; }
         void setOp2(std::string op2) { y = op2; }
         void setOp3(std::string op3) { z = op3; }
         void setReal(bool b) { hasReal = b; }
+
+        int getXdepth() const { return n_x; }
+        int getYdepth() const { return n_y; }
+        int getZdepth() const { return n_z; }
+        int getXoffset() const { return x_off; }
+        int getYoffset() const { return y_off; }
+        int getZoffset() const { return z_off; }
+
+        void setXdepth(int xD) { n_x = xD; }
+        void setYdepth(int yD) { n_y = yD; }
+        void setZdepth(int zD) { n_z = zD; }
+        void setXoffset(int xO) { x_off = xO; }
+        void setYoffset(int yO) { y_off = yO; }
+        void setZoffset(int zO) { z_off = zO; }
 };
 
 inline std::ostream &operator<<(std::ostream &out, const quad &q) {
@@ -75,7 +92,7 @@ extern int quadNextTemp;
 
 inline int quadNEXTQUAD() { return finalQuadList.size() + 1; }
 
-inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z, bool b = false) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z, b)); }
+inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z, bool b = false, int nx=0, int ny=0, int nz=0, int xoff=0, int yoff=0, int zoff=0) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z, b, nx, xoff, ny, yoff, nz, zoff)); }
 
 inline int quadNEWTEMP() { return quadNextTemp++; }
 
@@ -119,6 +136,13 @@ inline void quadCOPY(quad &q1, const quad &q2) {
     q1.setOp2(q2.getOp2());
     q1.setOp3(q2.getOp3());
     q1.setReal(q2.withReal());
+    
+    q1.setXdepth(q2.getXdepth());
+    q1.setYdepth(q2.getYdepth());
+    q1.setZdepth(q2.getZdepth());
+    q1.setXoffset(q2.getXoffset());
+    q1.setYoffset(q2.getYoffset());
+    q1.setZoffset(q2.getZoffset());
 }
 
 inline bool quadIsJump(const quad &q) { return ((q.getOpname().compare("jump") == 0) || q.getOpname().compare("jumpl") == 0); }
