@@ -4,7 +4,8 @@
 #include <iostream>
 
 class AST {
-    private:
+    protected:
+		int size, depth;
     public:
         virtual ~AST() = default;
         virtual void sem() = 0;
@@ -13,6 +14,9 @@ class AST {
         virtual std::string getName() const { return "AST()"; }
 
         virtual void igen() {}
+        
+		void setSize(int n) { size = n; }
+		void setDepth(int n) { depth = n; }
 };
 
 

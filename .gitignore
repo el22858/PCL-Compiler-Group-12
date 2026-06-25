@@ -9,7 +9,6 @@ parser.output
 pcl
 pcl.exe
 location.hpp
-*.sh
 
 *.imm
 *.asm

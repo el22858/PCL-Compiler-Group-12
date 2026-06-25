@@ -46,7 +46,7 @@ class quad {
         bool hasReal;
 
     public:
-        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false, int nx = 0, int xoff = 0, int ny = 0, int yoff = 0, int nz = 0, int zoff = 0, int xs, int ys, int zs) : tag(t), op(opname), x(op1), y(op2), z(op3), n_x(nx), n_y(ny), n_z(nz), x_off(xoff), y_off(yoff), z_off(zoff), hasReal(hR), x_size(xs), y_size(ys), z_size(zs) {}
+        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false, int nx = 0, int xoff = 0, int ny = 0, int yoff = 0, int nz = 0, int zoff = 0, int xs = 0, int ys = 0, int zs = 0) : tag(t), op(opname), x(op1), y(op2), z(op3), n_x(nx), n_y(ny), n_z(nz), x_off(xoff), y_off(yoff), z_off(zoff), hasReal(hR), x_size(xs), y_size(ys), z_size(zs) {}
 
         int getTag() const { return tag; }
         std::string getOpname() const { return op; }
@@ -99,7 +99,7 @@ extern int quadNextTemp;
 
 inline int quadNEXTQUAD() { return finalQuadList.size() + 1; }
 
-inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z, bool b = false, int nx=0, int ny=0, int nz=0, int xoff=0, int yoff=0, int zoff=0) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z, b, nx, xoff, ny, yoff, nz, zoff)); }
+inline void quadGENQUAD(std::string op, std::string x, std::string y, std::string z, bool b = false, int nx=0, int ny=0, int nz=0, int xoff=0, int yoff=0, int zoff=0, int xsize=0, int ysize=0, int zsize=0) { finalQuadList.push_back(quad(quadNEXTQUAD(), op, x, y, z, b, nx, xoff, ny, yoff, nz, zoff, xsize, ysize, zsize)); }
 
 inline int quadNEWTEMP() { return quadNextTemp++; }
 
@@ -147,12 +147,17 @@ inline void quadCOPY(quad &q1, const quad &q2) {
     q1.setXdepth(q2.getXdepth());
     q1.setYdepth(q2.getYdepth());
     q1.setZdepth(q2.getZdepth());
+    
     q1.setXoffset(q2.getXoffset());
     q1.setYoffset(q2.getYoffset());
     q1.setZoffset(q2.getZoffset());
+
+    q1.setXsize(q2.getXsize());    
+    q1.setYsize(q2.getYsize());
+    q1.setZsize(q2.getZsize());
 }
 
-inline bool quadIsJump(const quad &q) { return ((q.getOpname().compare("jump") == 0) || q.getOpname().compare("jumpl") == 0); }
+inline bool quadIsJump(const quad &q) { return ((q.getOpname().compare("jump") == 0) || (q.getOpname().compare("jumpl") == 0)); }
 
 
 #endif

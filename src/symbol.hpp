@@ -13,7 +13,7 @@ struct STEntry {
 	std::shared_ptr<Type> type;
 	int offset, n;
 	STEntry() {}
-	STEntry(std::shared_ptr<Type> t, int o) : type(t), offset(o) {}
+	STEntry(std::shared_ptr<Type> t, int o, int depth) : type(t), offset(o), n(depth) {}
 };
 
 
@@ -25,55 +25,60 @@ class Scope {
 		std::map<std::string , STEntry> locals;
 		std::map<std::string , std::shared_ptr<FormalList>> params;
 		std::map<std::string , std::unique_ptr<Stmt>> lblStmt;
-		std::map<std::string , bool> isForm, label, isForward, isNewMap;
+		std::map<std::string , bool> isForm, label, isForward, isNewMap, lib;
 		std::vector<std::string> localForp;
 		int offset, n;
 
-		int next;
 		std::vector<quad> quadList;
 	public:
-		Scope() : locals(), localForp(), next(0) {}
-		Scope(int o) : locals(), localForp(), offset(o), next(0) {}
+		Scope() : locals(), localForp() {}
+		Scope(int n) : locals(), localForp(), offset(6), n(n) {}
 
 		void printScope(std::ostream &out) {
 			for (auto i : locals) out << i.first << " : " << *(i.second.type) << std::endl;
 			out << std::endl;
 		}
 
-		void insert(std::string id, std::shared_ptr<Type> type) {
+		void insert(std::string id, std::shared_ptr<Type> type, bool isPar) {
 			if (locals.find(id) != locals.end()) yyerror("Duplicate variable declaration");
-			locals[id] = STEntry(type, offset++);
+			if (isPar) offset += type->getSize();
+			else offset-=type->getSize();
+			locals[id] = STEntry(type, offset, n);
 			isForm[id] = false;
 			isForward[id] = false;
 			label[id] = false;
 			params[id] = nullptr;
+			lib[id] = false;
 		}
 
-		void insertFormal(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL) {
+		void insertFormal(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL, bool isLib) {
 			if (locals.find(id) != locals.end()) yyerror("Dafuq");
-			locals[id] = STEntry(type, offset++);
+			locals[id] = STEntry(type, 0, n);
 			isForm[id] = true;
 			isForward[id] = false;
 			label[id] = false;
 			params[id] = fL;
 			localForp.push_back(id);
+			lib[id] = isLib;
 		}
 		void insertFormalForward(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL) {
 			if (locals.find(id) != locals.end()) yyerror("Dafuq");
-			locals[id] = STEntry(type, offset++);
+			locals[id] = STEntry(type, offset, n);
 			isForm[id] = true;
 			isForward[id] = true;
 			label[id] = false;
 			params[id] = fL;
+			lib[id] = false;
 		}
 
 		void insertLabel(std::string id, std::shared_ptr<Type> type) {
 			if (locals.find(id) != locals.end()) yyerror("Dafuq");
-			locals[id] = STEntry(type, offset++);
+			locals[id] = STEntry(type, offset, n);
 			isForm[id] = false;
 			isForward[id] = false;
 			label[id] = true;
 			params[id] = nullptr;
+			lib[id] = false;
 		}
 
 		STEntry* lookup(std::string id) {
@@ -97,6 +102,8 @@ class Scope {
 		bool validLabel(std::string c) { return (lblStmt.find(c) != lblStmt.end()); }
 		void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { lblStmt[c] = std::move(s); }
 
+		bool isLib(std::string c) { return lib[c]; }
+
 		void makeNew(std::string c) { isNewMap[c] = true; }
 		bool isNew(std::string c) { return (isNewMap.find(c) != isNewMap.end()); }
 
@@ -108,6 +115,13 @@ class Scope {
 			return "";
 		}
 		void insertParent(std::string c) { localForp.push_back(c); }
+
+		int addTemp(int size) {
+			offset -= size;
+			return offset;
+		}
+
+		void resetOffset() { offset = 0; }
 };
 
 class SymbolTable {
@@ -117,8 +131,8 @@ class SymbolTable {
 	public:
 		SymbolTable() : scopes(), n(0) {}
 
-		void insert(std::string id, std::shared_ptr<Type> t) { scopes.back().insert(id, t); }
-		void insertFormal(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL) { scopes.back().insertFormal(id, t, fL); }
+		void insert(std::string id, std::shared_ptr<Type> t, bool isParam = false) { scopes.back().insert(id, t, isParam); }
+		void insertFormal(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL, bool isLib = false) { scopes.back().insertFormal(id, t, fL, isLib); }
 		void insertFormalForward(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL) { scopes.back().insertFormalForward(id, t, fL); }
 		void insertLabel(std::string id, std::shared_ptr<Type> t) { scopes.back().insertLabel(id, t); }
 
@@ -154,11 +168,7 @@ class SymbolTable {
 			}
 		}
 
-		void enterScope() {
-			int o = scopes.empty() ? 0 : scopes.back().get_offset();
-			n++;
-			scopes.push_back(Scope(o));
-		}
+		void enterScope() { scopes.push_back(Scope(n++)); }
 		void exitScope() {
 			scopes.pop_back();
 			n--;
@@ -170,6 +180,13 @@ class SymbolTable {
 		bool isLabel(std::string c) { return scopes.back().isLabel(c); }
 		bool validLabel(std::string c) { return scopes.back().validLabel(c); }
 		void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, std::move(s)); }
+
+		bool isLib(std::string c) {
+			for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
+				if (s->lookup(c)) return s->isLib(c);
+			}
+			return false;
+		}
 
 		void makeNew(std::string c) { scopes.back().makeNew(c); }
 		bool isNew(std::string c) { return scopes.back().isNew(c); }
@@ -189,6 +206,11 @@ class SymbolTable {
 		}
 
 		bool hasRes() { return scopes.back().hasRes(); }
+
+		int getDepth() { return scopes.size(); }
+		int addTemp(int size) { return scopes.back().addTemp(size); }
+		void resetOffset() { scopes.back().resetOffset(); }
+		int getOff() { return scopes.back().get_offset(); }
 };
 
 extern SymbolTable st;

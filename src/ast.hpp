@@ -72,6 +72,8 @@ class StmtList : public Stmt {
 
 class Expr : public AST {
 	protected:
+		int offset, depth;
+		bool hasReal;
 	public:
 		std::shared_ptr<Type> type;
 		std::string place;
@@ -87,6 +89,9 @@ class Expr : public AST {
 			quadFALSE = quadMAKELIST(quadNEXTQUAD());
 			quadGENQUAD("jump", "-", "-", "*");
 		}
+
+		int getOff() { return offset; }
+		int getDepth() { return depth; }
 };
 
 
@@ -296,15 +301,26 @@ class UnOp : public RVal {
 		virtual std::string getOp() override { return op; }
 		virtual void sem() override {
 			expr->sem();
+			hasReal = false;
 
 			if (op.compare("+") == 0) {
 				if (expr->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
-				else if (expr->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
+				else if (expr->typeCheck(TYPE_REAL)) {
+					type = std::make_shared<Real>();
+					hasReal = true;
+				}
 				else yyerror("Expected number");
+				place = expr->place;
 			} else if (op.compare("-") == 0) {
 				if (expr->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
-				else if (expr->typeCheck(TYPE_REAL)) type = std::make_shared<Real>();
+				else if (expr->typeCheck(TYPE_REAL)) {
+					type = std::make_shared<Real>();
+					hasReal = true;
+				}
 				else yyerror("Expected number");
+				expr->place = "$" + std::to_string(quadNEWTEMP());
+				depth = st.getDepth();
+				offset = st.addTemp(type->getSize());
 			} else if (op.compare("not") == 0) {
 				if (expr->typeCheck(TYPE_BOOLEAN)) type = std::make_shared<Boolean>();
 				else yyerror("Expected boolean.");
@@ -314,11 +330,8 @@ class UnOp : public RVal {
 		virtual void igen() override {
 			expr->igen();
 
-			if (op.compare("+") == 0) place = expr->place;
-			else if (op.compare("-") == 0) {
-				place = "$" + std::to_string(quadNEWTEMP());
-				quadGENQUAD(op, expr->place, "-", place);
-			} else if (op.compare("not") == 0) {
+			if (op.compare("-") == 0) quadGENQUAD(op, expr->place, "-", place, hasReal, expr->getDepth(), 0, getDepth(), expr->getOff(), 0, getOff(), expr->type->getSize(), 0, type->getSize());
+			else if (op.compare("not") == 0) {
 				quadTRUE = expr->quadFALSE;
 				quadFALSE = expr->quadTRUE;
 			}
@@ -330,9 +343,8 @@ class BinOp : public RVal {
 	private:
 		std::unique_ptr<Expr> expr1, expr2;
 		std::string op;
-		bool addReal;
 	public:
-		BinOp(std::unique_ptr<Expr> e1, std::string s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), expr2(std::move(e2)), op(s), addReal(false) {}
+		BinOp(std::unique_ptr<Expr> e1, std::string s, std::unique_ptr<Expr> e2) : expr1(std::move(e1)), expr2(std::move(e2)), op(s) {}
 
 		virtual void printAST(std::ostream &out) const override {
 			out << op << "(";
@@ -351,6 +363,8 @@ class BinOp : public RVal {
 		}
 		virtual std::string getOp() override { return op; }
 		virtual void sem() override {
+			hasReal = false;
+
 			if ((op.compare("+") == 0) || (op.compare("-") == 0) || (op.compare("*") == 0)) {
 				expr1->sem();
 				expr2->sem();
@@ -359,27 +373,41 @@ class BinOp : public RVal {
 					else if (expr2->typeCheck(TYPE_REAL)) {
 						type = std::make_shared<Real>();
 
-						addReal = true;
+						hasReal = true;
 					}
 					else yyerror("Expected int or real.");
 				} else if (expr1->typeCheck(TYPE_REAL)) {
 					if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = std::make_shared<Real>();
 					else yyerror("Expected int or real.");
 					
-					addReal = true;
+					hasReal = true;
 				}
+				place = "$" + std::to_string(quadNEWTEMP());
+				depth = st.getDepth();
+				offset = st.addTemp(type->getSize());
 			} else if (op.compare("/") == 0) {
 				expr1->sem();
 				expr2->sem();
+				place = "$" + std::to_string(quadNEWTEMP());
+				depth = st.getDepth();
+				offset = st.addTemp(type->getSize());
 				if (((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL)))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Real>();
 				else yyerror("Expected int or real.");
 
-				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) addReal = true;
+				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) hasReal  = true;
+
+				place = "$" + std::to_string(quadNEWTEMP());
+				depth = st.getDepth();
+				offset = st.addTemp(type->getSize());
 			} else if ((op.compare("div") == 0) || (op.compare("mod") == 0)) {
 				expr1->sem();
 				expr2->sem();
 				if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = std::make_shared<Integer>();
 				else yyerror("Expected int.");
+				
+				place = "$" + std::to_string(quadNEWTEMP());
+				depth = st.getDepth();
+				offset = st.addTemp(type->getSize());
 			} else if ((op.compare("and") == 0) || (op.compare("or") == 0)) {
 				expr1->sem();
 				if (!expr1->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean.");
@@ -393,14 +421,14 @@ class BinOp : public RVal {
 				if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Boolean>();
 				else yyerror("Expected int or real.");
 
-				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) addReal = true;
+				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) hasReal  = true;
 			} else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
 				expr1->sem();
 				expr2->sem();
 				if (expr1->type->getName().compare(expr2->type->getName()) == 0) type = std::make_shared<Boolean>();
 				else yyerror("Type mismatch!");
 
-				if (expr1->typeCheck(TYPE_REAL) || (expr2->typeCheck(TYPE_REAL))) addReal = true;
+				if (expr1->typeCheck(TYPE_REAL) || (expr2->typeCheck(TYPE_REAL))) hasReal  = true;
 			}
 		}
 
@@ -408,8 +436,7 @@ class BinOp : public RVal {
 			if ((op.compare("+") == 0) || (op.compare("-") == 0) || (op.compare("*") == 0) || (op.compare("/") == 0) || (op.compare("div") == 0) || (op.compare("mod") == 0)) {
 				expr1->igen();
 				expr2->igen();
-				place = "$" + std::to_string(quadNEWTEMP());
-				quadGENQUAD(op, expr1->place, expr2->place, place, addReal);
+				quadGENQUAD(op, expr1->place, expr2->place, place, hasReal, expr1->getDepth(), expr2->getDepth(), getDepth(), expr1->getOff(), expr2->getOff(), getOff(), expr1->type->getSize(), expr2->type->getSize(), type->getSize());
 			} else if (op.compare("and") == 0) {
 				expr1->igen();
 				// quadGENQUAD("dude", "go", "to", std::to_string(quadNEXTQUAD()));
@@ -430,7 +457,7 @@ class BinOp : public RVal {
 				expr2->igen();
 
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
-				quadGENQUAD(op, expr1->place, expr2->place, "*", addReal);
+				quadGENQUAD(op, expr1->place, expr2->place, "*", hasReal, expr1->getDepth(), expr2->getDepth(), 0, expr1->getOff(), expr2->getOff(), 0, expr1->type->getSize(), expr2->type->getSize());
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("jump", "-", "-", "*");
 			} else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
@@ -438,7 +465,7 @@ class BinOp : public RVal {
 				expr2->igen();
 
 				quadTRUE = quadMAKELIST(quadNEXTQUAD());
-				quadGENQUAD(op, expr1->place, expr2->place, "*", addReal);
+				quadGENQUAD(op, expr1->place, expr2->place, "*", hasReal, expr1->getDepth(), expr2->getDepth(), 0, expr1->getOff(), expr2->getOff(), 0, expr1->type->getSize(), expr2->type->getSize());
 				quadFALSE = quadMAKELIST(quadNEXTQUAD());
 				quadGENQUAD("jump", "-", "-", "*");
 			}
@@ -454,9 +481,15 @@ class IntConst : public RVal {
 
 		virtual void printAST(std::ostream &out) const override { out << "IntConst(" << val << ")"; }
 		virtual std::string getName() const override { return "IntConst(" + std::to_string(val) + ")"; }
-		virtual void sem() override { type = std::make_shared<Integer>(); }
+		virtual void sem() override {
+			type = std::make_shared<Integer>();
+			
+			place = std::to_string(val);
+			depth = 0;
+			offset = 0;
+		}
 
-		virtual void igen() override { place = std::to_string(val); }
+		virtual void igen() override {}
 };
 
 
@@ -468,12 +501,13 @@ class BoolConst : public RVal {
 
 		virtual void printAST(std::ostream &out) const override { out << "BoolConst('" << val << "')"; }
 		virtual std::string getName() const override { return (val) ? "BoolConst(true)" : "BoolConst(false)" ; }
-		virtual void sem() override { type = std::make_shared<Boolean>(); }
-
-		virtual void igen() override {
+		virtual void sem() override {
+			type = std::make_shared<Boolean>();
+			
 			place = (val) ? "true" : "false";
-			quadGENBOOL();
 		}
+
+		virtual void igen() override { quadGENBOOL(); }
 };
 
 
@@ -485,9 +519,15 @@ class RealConst : public RVal {
 
 		virtual void printAST(std::ostream &out) const override { out << "RealConst(" << val << ")"; }
 		virtual std::string getName() const override { return "RealConst(" + std::to_string(val) + ")"; }
-		virtual void sem() override { type = std::make_shared<Real>(); }
+		virtual void sem() override {
+			type = std::make_shared<Real>();
+		
+			place = std::to_string(val);
+			depth = 0;
+			offset = 0;
+		}
 
-		virtual void igen() override { place = std::to_string(val); }
+		virtual void igen() override {}
 };
 
 class CharConst : public RVal {
@@ -498,9 +538,15 @@ class CharConst : public RVal {
 
 		virtual void printAST(std::ostream &out) const override {out << "CharConst(" << val << ")"; }
 		virtual std::string getName() const override { return "CharConst(" + std::string(val) + ")"; }
-		virtual void sem() override { type = std::make_shared<Char>(); }
+		virtual void sem() override {
+			type = std::make_shared<Char>();
 
-		virtual void igen() override { place = val; }
+			place = val;
+			depth = 0;
+			offset = 0;
+		}
+
+		virtual void igen() override {}
 };
 
 class NilLVal : public LVal {
@@ -514,9 +560,11 @@ class NilLVal : public LVal {
 			type = std::make_shared<TypeNil>();
 
 			place = "nil";
+			depth = 0;
+			offset = 0;
 		}
 
-		virtual void igen() override {  }
+		virtual void igen() override {}
 };
 
 class NilRVal : public RVal {
@@ -526,7 +574,13 @@ class NilRVal : public RVal {
 
 		virtual void printAST(std::ostream &out) const override { out << "Nil()";}
 		virtual std::string getName() const override { return "Nil()"; }
-		virtual void sem() override { type = std::make_shared<TypeNil>(); }
+		virtual void sem() override {
+			type = std::make_shared<TypeNil>();
+		
+			place = "nil";
+			depth = 0;
+			offset = 0;
+		}
 
 		virtual void igen() override { place = "nil"; }
 };
@@ -540,9 +594,15 @@ class StringLit : public LVal {
 
 		virtual void printAST(std::ostream &out) const override { out << "StringLit(" << val << ")"; }
 		virtual std::string getName() const override { return "StringLit(" + val + ")"; } 
-		virtual void sem() override { type = std::make_shared<Array>(std::move(std::make_unique<Char>()), val.size()); }
+		virtual void sem() override {
+			type = std::make_shared<Array>(std::move(std::make_unique<Char>()), val.size());
+		
+			place = val;
+			depth = 0;
+			offset = 0;
+		}
 
-		virtual void igen() { place = val; }
+		virtual void igen() {}
 };
 
 
@@ -561,6 +621,7 @@ class Id : public LVal {
 			offset = e->offset;
 
 			place = id;
+			depth = e->n;
 		}
 		std::string getId() { return id; }
 
@@ -617,6 +678,7 @@ class IdLabel : public Stmt {
 	private:
 		std::unique_ptr<Id> id;
 		std::unique_ptr<Stmt> stmt;
+		int depth;
 	public:
 		IdLabel(std::unique_ptr<Id> i, std::unique_ptr<Stmt> s) : id(std::move(i)), stmt(std::move(s)) {}
 
@@ -642,10 +704,12 @@ class IdLabel : public Stmt {
 				stmt->sem();
 				st.insertLabelStmt(c, std::move(stmt));
 			}
+
+			depth = st.getDepth();
 		}
 
 		virtual void igen() override {
-			quadGENQUAD("label", id->getId(), "-", "-");
+			quadGENQUAD("label", id->getId(), "-", "-", depth);
 			stmt->igen();
 			quadNEXT = stmt->quadNEXT;
 		}
@@ -691,14 +755,16 @@ class ArrayItem: public LVal {
 			else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
 
 			type = lVal->type->getArrayType();
+			place = "$" + std::to_string(quadNEWTEMP());
+			depth = st.getDepth();
+			offset = st.getOff();
 		}
 
 		virtual void igen() override {
 			lVal->igen();
 			expr->igen();
 
-			place = "$" + std::to_string(quadNEWTEMP());
-			quadGENQUAD("array", lVal->place, expr->place, place);
+			quadGENQUAD("array", lVal->place, expr->place, place, false, 0, 0, 0, 0, 0, 0, type->getArrayType()->getSize());
 			place = "[" + place + "]";
 		}
 };
@@ -733,9 +799,9 @@ class Formal : public AST {
             if (byRef) return "R";
             return "V";
         }
-		virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getId(), type); }
+		virtual void sem() override { for (const auto &id : idList->getList()) st.insert(id->getId(), type, true); }
 
-		virtual void igen() override {  }
+		virtual void igen() override {}
 };
 
 
@@ -784,7 +850,7 @@ class Call : public Stmt {
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
 		std::shared_ptr<FormalList> fL;
-		bool isProc;
+		bool isProc, lib;
 	public:
 		Call(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr), isProc(false) {}
 
@@ -829,6 +895,7 @@ class Call : public Stmt {
 			}
 
 			isProc = (st.lookup(id->getId())->type->getType() == TYPE_PROC);
+			lib = st.isLib(id->getId());
 
 			st.refreshFormals(funcName, fL);
 		}
@@ -839,33 +906,35 @@ class Call : public Stmt {
 
 			if (!fL->isEmpty()) {
 				for (const auto &f : fL->getList()) {
-					if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)) {
-						std::string W = "$" + std::to_string(quadNEWTEMP());
-						quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
+					const auto &tmp = func->getList()[i];
+
+					if (tmp->typeCheck(TYPE_BOOLEAN)) {
+						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
+						quadBACKPATCH(tmp->quadTRUE, std::to_string(quadNEXTQUAD()));
 						quadGENQUAD(":=", "true", "-", W);
 						quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
 
-						quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
+						quadBACKPATCH(tmp->quadFALSE, std::to_string(quadNEXTQUAD()));
 						quadGENQUAD(":=", "false", "-", W);
-						func->getList()[i]->place = W;
+						tmp->place = W;
 					}
 
-					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
-						std::string W = "$" + std::to_string(quadNEWTEMP());
-						quadGENQUAD(":=", func->getList()[i]->place, "-", W);
-						quadGENQUAD("par", W, "V", "-");
-					} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
+					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(tmp->type->getName()) && (((f->getType()).compare(tmp->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (tmp->typeCheck(TYPE_INTEGER))))))){
+						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
+						quadGENQUAD(":=", tmp->place, "-", W);
+						quadGENQUAD("par", W, "V", "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
+					} else quadGENQUAD("par", tmp->place, f->quadPARAMMODE(), "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
 
 					++i;
 				}
 			}
 
 			if (!isProc) {
-                std::string W = "$" + std::to_string(quadNEWTEMP());
+                std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
                 quadGENQUAD("par", "RET", W, "-");
             }
 
-			quadGENQUAD("call", "-", "-", id->getId());
+			quadGENQUAD("call", "-", "-", id->getId(), lib); /* ??? */
 			quadNEXT = quadEMPTYLIST();
 		}
 };
@@ -876,6 +945,7 @@ class CallRVal : public RVal {
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
 		std::shared_ptr<FormalList> fL;
+		bool lib;
 
 	public:
 		CallRVal(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr) {}
@@ -920,6 +990,7 @@ class CallRVal : public RVal {
 				}
 			}
 			type = std::move(st.lookup(funcName)->type);
+			lib = st.isLib(id->getId());
 
 			st.refreshFormals(funcName, fL);
 		}
@@ -930,31 +1001,33 @@ class CallRVal : public RVal {
 
 			if (!fL->isEmpty()) {
 				for (const auto &f : fL->getList()) {
-					if (func->getList()[i]->typeCheck(TYPE_BOOLEAN)) {
-						std::string W = "$" + std::to_string(quadNEWTEMP());
-						quadBACKPATCH(func->getList()[i]->quadTRUE, std::to_string(quadNEXTQUAD()));
+					const auto &tmp = func->getList()[i];
+
+					if (tmp->typeCheck(TYPE_BOOLEAN)) {
+						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
+						quadBACKPATCH(tmp->quadTRUE, std::to_string(quadNEXTQUAD()));
 						quadGENQUAD(":=", "true", "-", W);
 						quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
 
-						quadBACKPATCH(func->getList()[i]->quadFALSE, std::to_string(quadNEXTQUAD()));
+						quadBACKPATCH(tmp->quadFALSE, std::to_string(quadNEXTQUAD()));
 						quadGENQUAD(":=", "false", "-", W);
-						func->getList()[i]->place = W;
+						tmp->place = W;
 					}
 
-					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(func->getList()[i]->type->getName()) && (((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))){
-						std::string W = "$" + std::to_string(quadNEWTEMP());
-						quadGENQUAD(":=", func->getList()[i]->place, "-", W);
-						quadGENQUAD("par", W, "V", "-");
-					} else quadGENQUAD("par", func->getList()[i]->place, f->quadPARAMMODE(), "-");
+					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(tmp->type->getName()) && (((f->getType()).compare(tmp->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (tmp->typeCheck(TYPE_INTEGER))))))){
+						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
+						quadGENQUAD(":=", tmp->place, "-", W);
+						quadGENQUAD("par", W, "V", "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
+					} else quadGENQUAD("par", tmp->place, f->quadPARAMMODE(), "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
 
 					++i;
 				}
 			}
 
 			quadGENQUAD("call", "-", "-", id->getId());
-			place = "$" + std::to_string(quadNEWTEMP());
+			place = "$" + std::to_string(quadNEWTEMP()); /* ??? */
 			quadGENQUAD("par", "RET", place, "-");
-			quadGENQUAD("call", "-", "-", id->getId());
+			quadGENQUAD("call", "-", "-", id->getId(), lib, id->getDepth(), 0, 0, 0, 0, 0); /* ??? */
 		}
 };
 
@@ -1023,6 +1096,7 @@ class Assign: public Stmt {
 	private:
 		std::unique_ptr<LVal> lval;
 		std::unique_ptr<Expr> expr;
+		bool withReal;
 	public:
 		Assign(std::unique_ptr<LVal> l, std::unique_ptr<Expr> e) : lval(std::move(l)), expr(std::move(e)) {}
 
@@ -1061,6 +1135,9 @@ class Assign: public Stmt {
 					yyerror(err);
 				}
 			}
+
+			if ((lval->typeCheck(TYPE_REAL)) || (expr->typeCheck(TYPE_REAL))) withReal = true;
+			else withReal = false;
 		}
 
 		virtual void igen() override {
@@ -1072,7 +1149,7 @@ class Assign: public Stmt {
 				quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
 				quadBACKPATCH(expr->quadFALSE, std::to_string(quadNEXTQUAD()));
 				quadGENQUAD(":=", "false", "-", lval->place);
-			} else quadGENQUAD(":=", expr->place, "-", lval->place);
+			} else quadGENQUAD(":=", expr->place, "-", lval->place, withReal, expr->getDepth(), 0, lval->getDepth(), expr->getOff(), 0, lval->getOff(), expr->type->getSize(), 0, lval->type->getSize());
 			quadNEXT = quadEMPTYLIST();
 		}
 };
@@ -1085,7 +1162,7 @@ class Return: public Stmt {
 		virtual void printAST(std::ostream &out) const override { out << "Return()"; }
 		virtual std::string getName() const override { return "Return()"; }
 		virtual void sem() override {  }
-		virtual void igen() override { quadGENQUAD("ret", "-", "-", "-"); }
+		virtual void igen() override { quadGENQUAD("ret", "-", "-", "-"); } /* ??? */
 };
 
 
@@ -1138,10 +1215,10 @@ class New: public Stmt {
 			if (expr) {
 				expr->igen();
 				int s = lVal->type->getSize();
-				std::string W = "$" + std::to_string(quadNEWTEMP());
+				std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
 				quadGENQUAD("*", expr->place, std::to_string(s), W);
-				quadGENQUAD("par", W, "V", "-");
-			} else quadGENQUAD("par", std::to_string(lVal->type->getSize()), "V", "-");
+				quadGENQUAD("par", W, "V", "-", expr->getDepth(), 0, 0, expr->getOff(), 0, 0, expr->type->getSize());
+			} else quadGENQUAD("par", std::to_string(lVal->type->getSize()), "V", "-", 0, 0, 0, 0, 0, 0, 0, 4);
 			quadGENQUAD("par", lVal->place, "RET", "-");
 			quadGENQUAD("call", "-", "-", "new");
 			quadNEXT = quadEMPTYLIST();
@@ -1244,17 +1321,21 @@ class DeclList : public AST {
 
 
 class Header : public AST {
+	protected:
+		std::unique_ptr<Id> id;
+		int size, idNum;
 	public:
 		virtual void semForward() {}
+		void setSize(int n) { size = n; }
+		void setId(int n) { idNum = n; }
 };
 
 
 class Procedure : public Header {
 	private:
-		std::unique_ptr<Id> id;
 		std::shared_ptr<FormalList> formalList;
 	public:
-		Procedure(std::unique_ptr<Id> i, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), formalList(fL) {}
+		Procedure(std::unique_ptr<Id> i, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : formalList(fL) { id = std::make_unique<Id>(i->getId()); }
 
 		virtual void printAST(std::ostream &out) const override {
 			out << "Procedure(";
@@ -1297,11 +1378,10 @@ class Procedure : public Header {
 
 class Function : public Header {
 	private:
-		std::unique_ptr<Id> id;
 		std::shared_ptr<Type> type;
 		std::shared_ptr<FormalList> formalList;
 	public:
-		Function(std::unique_ptr<Id> i, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : id(std::move(i)), type(t), formalList(std::move(fL)) {}
+		Function(std::unique_ptr<Id> i, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL = std::move(std::make_unique<FormalList>())) : type(t), formalList(std::move(fL)) { id = std::make_unique<Id>(i->getId()); }
 
 		virtual void printAST(std::ostream &out) const override {
 			out << "Function(";
@@ -1386,6 +1466,8 @@ class Local : public AST {
 				// st.printTopScope(std::cout);
 				body->sem();
 				// std::cout << st.lookup("x")->type->getType() << std::endl;
+				body->setSize(st.getOff());
+				body->setDepth(st.getDepth());
 				st.exitScope();
 			} else if (localType.compare("forward") == 0) hdr->semForward();
 		}
@@ -1436,6 +1518,8 @@ class LocalList : public AST {
 };
 
 
+extern int funcNum;
+
 class Body : public Stmt {
 	private:
 		std::unique_ptr<LocalList> localList;
@@ -1473,10 +1557,10 @@ class Body : public Stmt {
 
 		virtual void igen() override {
 			localList->igen();
-			quadGENQUAD("unit", name, "-", "-");
+			quadGENQUAD("unit", name, "-", "-", false, depth, 0, 0, funcNum, 0, 0, size);
 			block->igen();
 			quadBACKPATCH(block->quadNEXT, std::to_string(quadNEXTQUAD()));
-			quadGENQUAD("endu", name, "-", "-");
+			quadGENQUAD("endu", name, "-", "-", false, depth, 0, 0, funcNum++, 0, 0, size);
 		}
 };
 
@@ -1544,15 +1628,19 @@ class Deref : public LVal {
 			type = expr->type->getPointerType();
 
 			std::string W = "$" + quadNEWTEMP();
+			depth = st.getDepth();
+			offset = st.getOff();
 			quadGENQUAD(":=", expr->place, "-", W);
 			place ="[" + W + "]";
 		}
 
 		virtual void igen() override {
 			expr->igen();
-			std::string W ="$" + quadNEWTEMP();
-			quadGENQUAD(":=", expr->place, "-", W);
+			std::string W ="$" + quadNEWTEMP(); /* ??? */
 			place = "[" + W + "]";
+			depth = st.getDepth();
+			offset = st.addTemp(type->getSize());
+			quadGENQUAD(":=", expr->place, "-", W, false, expr->getDepth(), 0, getDepth(), expr->getOff(), 0, getOff(), expr->type->getSize(), 0, type->getSize());
 		}
 };
 
