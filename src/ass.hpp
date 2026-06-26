@@ -265,21 +265,21 @@ inline void translate(std::vector<quad> fQL) {
 			assembly += "\t\tadd\t" + sp + ", " + std::to_string(q.getZsize() + 4) + "\n";
 		} else if (op.compare("par") == 0) {
 			if (y.compare("V") == 0) {
-				if (q.withReal()) {
-					loadReal(x, q.getXdepth(), q.getXoffset(), q.getXsize());
-					assembly += "\t\tsub" + sp + ", 10\n";
+				if (q.getXsize() == 1) {
+					load(al, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+					assembly += "\t\tsub\t" + sp + ", 1\n";
 					assembly += "\t\tmov\t" + si + ", " + sp + "\n";
-					assembly += "\t\tfstp\ttbyte [" + si + "]\n";
+					assembly += "\t\tmov\tbyte [" + si + "], " + al + "\n";
 				} else if(q.getXsize() == 4) {
 					load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
 					// assembly += "\t\tpush\t" + ax + "\n";
 					assembly += "\t\tsub\t" + sp + ", 4\n";
 					assembly += "\t\tmov\t[" + sp + " + 4], " + ax + "\n";
 				} else {
-					load(al, x, q.getXdepth(), q.getXoffset(), q.getXsize());
-					assembly += "\t\tsub\t" + sp + ", 1\n";
+					loadReal(x, q.getXdepth(), q.getXoffset(), q.getXsize());
+					assembly += "\t\tsub\t" + sp + ", 10\n";
 					assembly += "\t\tmov\t" + si + ", " + sp + "\n";
-					assembly += "\t\tmov\tbyte [" + si + "], " + al + "\n";
+					assembly += "\t\tfstp\ttbyte [" + si + "]\n";
 				}
 			} else {
 				loadAddr(rdi, x, q.getXdepth(), q.getXoffset(), q.getXsize());
