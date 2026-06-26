@@ -237,6 +237,7 @@ bool hasChanged;
 int main(int argc, char** argv) {
 	funcNum = 0;
 	yyin = fopen(argv[1], "r");
+	std::string output = argv[2]; 
 	if (yyin == nullptr) {
 		perror(argv[1]);
 		return 1;
@@ -283,7 +284,7 @@ int main(int argc, char** argv) {
 
 	if (printIMM) std::cout << finalQuadList;
 	else {
-		std::string intermediateOutput = "./" + ast->getBodyName() + ".imm";
+		std::string intermediateOutput = "./" + output + ".imm";
 		std::ofstream imFile(intermediateOutput);
 		imFile << finalQuadList;
 	}
@@ -296,7 +297,7 @@ int main(int argc, char** argv) {
 
 	if (printASS) std::cout << assembly;
 	else {
-		std::string assOutput = "./" + ast->getBodyName() + ".asm";
+		std::string assOutput = "./" + output + ".asm";
 		std::ofstream asFile(assOutput);
 		asFile << assembly;
 	}

@@ -11,7 +11,7 @@ extern std::unique_ptr<Body> ast;
 extern std::string assembly;
 extern std::vector<std::string> stringsUsed, libsUsed;
 extern int n_cur;
-static std::string ax = "eax", cx = "ecx", dx = "edx", st0 = "rax", st1 = "rcx", si = "rsi", bp = "rbp", sp = "rsp", al = "al", di = "di";
+static const std::string ax = "eax", cx = "ecx", dx = "edx", st0 = "rax", st1 = "rcx", si = "rsi", bp = "rbp", sp = "rsp", al = "al", di = "di", rdi = "rdi";
 static std::string curFunc;
 static int curFNum;
 
@@ -75,8 +75,8 @@ inline void epilogue() {
 }
 
 inline void getAR(int n) {
-	assembly += "\t\tmov\trsi, word [rbp + 4]";
-	for (int i=1; i<n_cur-n; ++i) assembly += "\t\tmov\trsi, word [rsi + 4]";
+	assembly += "\t\tmov\t" + si + ", [" + bp + " + 4]\n";
+	for (int i=1; i<n_cur-n; ++i) assembly += "\t\tmov\t" + si + ", [" + si + " + 4]\n";
 }
 
 inline void loadAddr(std::string R, std::string a, int a_n, int a_off, int a_size, std::string type);
@@ -108,17 +108,17 @@ inline void load(std::string R, std::string a, int a_n = 0, int a_off = 0, int a
 	} else if ((a[0] == '{') && (a[a.length()-1] == '}')) loadAddr(R, a.substr(1, a.length()-2), a_n, a_off, a_size, type);
 	else if (a_n == n_cur) {
 		if (type.compare("V") == 0) {
-			assembly += "\t\tmov\t" + R + ", " + size + " [" + bp; + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
+			assembly += "\t\tmov\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 		}
 		else {
-			assembly += "\t\tmov\t" + si + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
+			assembly += "\t\tmov\t" + si + ", [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 			assembly += "\t\tmov\t" + R + ", " + size + " [" + si + "]\n";
 		}
 	} else {
 		getAR(a_n);
 		if (type.compare("V") == 0) assembly += "\t\tmov\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 		else {
-			assembly += "\t\tmov\t" + si + ", word [" + si + (a_off >= 0 ? " + " : " - ") + std::to_string((abs(a_off))) + "]\n";
+			assembly += "\t\tmov\t" + si + ", [" + si + (a_off >= 0 ? " + " : " - ") + std::to_string((abs(a_off))) + "]\n";
 			assembly += "\t\tmov\t" + R + ", " + size + " [" + si + "]\n";
 		}
 	}
@@ -141,14 +141,14 @@ inline void loadReal(std::string a, int a_n = 0, int a_off = 0, int a_size = 8, 
 	} else if (a_n == n_cur) {
 		if (type.compare("V") == 0) assembly += "\t\t" + instr + "\t" + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 		else {
-			assembly += "\t\tmov\t" + si + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
+			assembly += "\t\tmov\t" + si + ", [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 			assembly += "\t\t" + instr + "\t" + size + " [" + si + "]\n";
 		}
 	} else {
 		getAR(a_n);
 		if (type.compare("V") == 0) assembly += "\t\t" + instr + "\t" + size + " [" + si + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 		else {
-			assembly += "\t\tmov\t" + si + ", word [" + si + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) +"]\n";
+			assembly += "\t\tmov\t" + si + ", [" + si + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) +"]\n";
 			assembly += "\t\t" + instr + "\t" + size + " [" + si + "]\n";
 		}
 	}
@@ -163,15 +163,15 @@ inline void loadAddr(std::string R, std::string a, int a_n = 0, int a_off = 0, i
 
 	if ((a[0] == '\"') && (a[a.length()-1] == '\"')) {
 		stringsUsed.push_back(a);
-		assembly += "\t\tmov\trdi, str" + std::to_string(stringsUsed.size()) + "\n"; 
+		assembly += "\t\tmov\t" + rdi + ", str" + std::to_string(stringsUsed.size()) + "\n"; 
 	} else if ((a[0] == '[') && (a[a.length()-1] == ']')) load(R, a.substr(1, a.length()-2), a_n, a_off, a_size, type);
 	else if (a_n == n_cur) {
-		if (type.compare("V") == 0) assembly += "\t\tlea\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]";
-		else assembly += "\t\tmov\t" + R + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]";
+		if (type.compare("V") == 0) assembly += "\t\tlea\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
+		else assembly += "\t\tmov\t" + R + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 	} else {
 		getAR(a_n);
-		if (type.compare("V") == 0) assembly += "\t\tlea\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]";
-		else assembly += "\t\tmov\t" + R + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]";
+		if (type.compare("V") == 0) assembly += "\t\tlea\t" + R + ", " + size + " [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
+		else assembly += "\t\tmov\t" + R + ", word [" + bp + (a_off >= 0 ? " + " : " - ") + std::to_string(abs(a_off)) + "]\n";
 	}
 }
 
@@ -240,11 +240,11 @@ inline std::string endof(std::string x) { return "@" + x + "_" + std::to_string(
 inline std::string ass_name(std::string z) { return "_" + z + "_" + std::to_string(curFNum); }
 
 inline void updateAL(int n) {
-	if (n_cur < n) assembly += "\t\tpush\trbp\n";
-	else if (n_cur == n) assembly += "\t\tpush\tword [rbp + 4]\n";
+	if (n_cur < n) assembly += "\t\tpush\t" + bp + "\n";
+	else if (n_cur == n) assembly += "\t\tpush\tword [" + bp + " + 4]\n";
 	else {
 		getAR(n);
-		assembly += "\t\tpush\tword [rsi + 4]\n";
+		assembly += "\t\tpush\tword [" + si + " + 4]\n";
 	}
 }
 
@@ -272,7 +272,9 @@ inline void translate(std::vector<quad> fQL) {
 					assembly += "\t\tfstp\ttbyte [" + si + "]\n";
 				} else if(q.getXsize() == 4) {
 					load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
-					assembly += "\t\tpush\t" + ax + "\n";
+					// assembly += "\t\tpush\t" + ax + "\n";
+					assembly += "\t\tsub\t" + sp + ", 4\n";
+					assembly += "\t\tmov\t[" + sp + " + 4], " + ax + "\n";
 				} else {
 					load(al, x, q.getXdepth(), q.getXoffset(), q.getXsize());
 					assembly += "\t\tsub\t" + sp + ", 1\n";
@@ -280,8 +282,8 @@ inline void translate(std::vector<quad> fQL) {
 					assembly += "\t\tmov\tbyte [" + si + "], " + al + "\n";
 				}
 			} else {
-				loadAddr("rdi", x, q.getXdepth(), q.getXoffset(), q.getXsize());
-				assembly += "\t\tpush\trdi\n";
+				loadAddr(rdi, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+				assembly += "\t\tpush\t" + rdi + "\n";
 			}
 		}
 		else if (op.compare("unit") == 0) {
@@ -303,8 +305,13 @@ inline void translate(std::vector<quad> fQL) {
 				loadReal(x, q.getXdepth(), q.getXoffset(), q.getXsize());
 				storeReal(z, q.getZdepth(), q.getZoffset(), q.getZsize());
 			} else {
-				load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
-				store(cx, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+				if (q.getXsize() == 4) {
+					load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+					store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+				} else  {
+					load(al, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+					store(al, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+				}
 			}
 		} else if (op.compare("array") == 0) {
 			load(ax, y, q.getYdepth(), q.getYoffset(), q.getYsize());
@@ -466,8 +473,8 @@ inline void translate(std::vector<quad> fQL) {
 			assembly += "\t\t" + instr + "\t" + label(z) + "\n";
 		} else if (op.compare("ifb") == 0) {
 			load(al, x, q.getXdepth(), q.getXoffset(), q.getXsize());
-			assembly += "\t\tor\tal, al\n";
-			assembly += "\t\tjnz\t" + label(z);
+			assembly += "\t\tor\t" + al + ", " + al + "\n";
+			assembly += "\t\tjnz\t" + label(z) + "\n";
 		} else if (op.compare("jump") == 0) assembly += "\t\tjmp\t" + label(z) + "\n";
 		else if (op.compare("jumpl") == 0) assembly += "\t\tjmp\t" + label(z) + "\n";
 		else if (op.compare("label") == 0) assembly += label(z) + ":\n";

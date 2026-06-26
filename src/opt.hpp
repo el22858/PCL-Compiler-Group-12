@@ -234,6 +234,9 @@ inline void commonSubElim(int start = 0, int end = finalQuadList.size()-1) {
                 q.setOpname(":=");
                 q.setOp1(z);
                 q.setOp2("-");
+                q.setXdepth(finalQuadList[i].getZdepth());
+                q.setXoffset(finalQuadList[i].getZoffset());
+                q.setXsize(finalQuadList[i].getZsize());
                 hasChanged = true;
             }
         }
@@ -247,8 +250,18 @@ inline void localCopyProp(int start = 0, int end = finalQuadList.size()-1) {
             std::string x = q.getOp1(), z = q.getOp3();
             for (int j = i+1; j <= end; ++j) {
                 auto &p = finalQuadList[j];
-                if (p.getOp1().compare(z) == 0) p.setOp1(x);
-                if (p.getOp2().compare(z) == 0) p.setOp2(x);
+                if (p.getOp1().compare(z) == 0) {
+                    p.setOp1(x);
+                    p.setXdepth(q.getXdepth());
+                    p.setXoffset(q.getXoffset());
+                    p.setXsize(q.getXsize());
+                }
+                if (p.getOp2().compare(z) == 0) {
+                    p.setOp2(x);
+                    p.setYdepth(q.getXdepth());
+                    p.setYoffset(q.getXoffset());
+                    p.setYsize(q.getXsize());
+                }
             }
         }
     }
@@ -265,6 +278,9 @@ inline void revProp(int start = 0, int end = finalQuadList.size()-1) {
                     auto &v = finalQuadList[j];
                     if (v.getOp3().compare(temp) == 0) {
                         v.setOp3(z);
+                        v.setZdepth(q.getZdepth());
+                        v.setZoffset(q.getZoffset());
+                        v.setZsize(q.getZsize());
                         q.setOpname("cleanup");
                         break;
                     }

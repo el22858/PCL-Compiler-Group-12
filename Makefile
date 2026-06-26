@@ -14,6 +14,7 @@ src/parser.o: src/parser.cpp src/lexer.hpp src/ast.hpp src/quads.hpp
 
 pcl: src/lexer.o src/parser.o
 	@g++ -Wall -o pcl src/main.cpp src/lexer.o src/parser.o
+	@./libs.sh
 
 clean:
 	@clear

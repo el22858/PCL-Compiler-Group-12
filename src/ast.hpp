@@ -850,7 +850,9 @@ class Call : public Stmt {
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
 		std::shared_ptr<FormalList> fL;
-		bool isProc, lib;
+		bool isProc, lib, retReal;
+		std::string place;
+		int offset, size;
 	public:
 		Call(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr), isProc(false) {}
 
@@ -896,12 +898,20 @@ class Call : public Stmt {
 
 			isProc = (st.lookup(id->getId())->type->getType() == TYPE_PROC);
 			lib = st.isLib(id->getId());
+			retReal = (st.lookup(id->getId())->type->getType() == TYPE_REAL);
+
+			depth = st.getDepth();
+			offset = st.getOff();
+			if (!isProc) {
+				size = st.lookup(id->getId())->type->getSize();
+				st.addTemp(size);
+			}
 
 			st.refreshFormals(funcName, fL);
 		}
 
 		virtual void igen() override {
-			int i = 0;
+			int i = 0, initOffset = offset;
 			if (func) func->igen();
 
 			if (!fL->isEmpty()) {
@@ -909,19 +919,20 @@ class Call : public Stmt {
 					const auto &tmp = func->getList()[i];
 
 					if (tmp->typeCheck(TYPE_BOOLEAN)) {
-						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
+						std::string W = "$" + std::to_string(quadNEWTEMP());
 						quadBACKPATCH(tmp->quadTRUE, std::to_string(quadNEXTQUAD()));
-						quadGENQUAD(":=", "true", "-", W);
+						quadGENQUAD(":=", "true", "-", W, false, 0, 0, depth, 0, 0, --offset, 0, 0, 1);
 						quadGENQUAD("jump", "-", "-", std::to_string(quadNEXTQUAD() + 2));
 
 						quadBACKPATCH(tmp->quadFALSE, std::to_string(quadNEXTQUAD()));
-						quadGENQUAD(":=", "false", "-", W);
+						quadGENQUAD(":=", "false", "-", W, false, 0, 0, depth, 0, 0, offset, 0, 0, 1);
 						tmp->place = W;
 					}
 
 					if ((f->quadPARAMMODE().compare("V")==0) && (f->getType().compare(tmp->type->getName()) && (((f->getType()).compare(tmp->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (tmp->typeCheck(TYPE_INTEGER))))))){
-						std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
-						quadGENQUAD(":=", tmp->place, "-", W);
+						std::string W = "$" + std::to_string(quadNEWTEMP());
+						offset -= tmp->type->getSize();
+						quadGENQUAD(":=", tmp->place, "-", W, f->getType().compare("Real()") == 0, tmp->getDepth(), 0, depth, tmp->getOff(), offset, tmp->type->getSize(), 0, (f->getType().compare("Real()") ? tmp->type->getSize() : 8));
 						quadGENQUAD("par", W, "V", "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
 					} else quadGENQUAD("par", tmp->place, f->quadPARAMMODE(), "-", false, tmp->getDepth(), 0, 0, tmp->getOff(), 0, 0, tmp->type->getSize());
 
@@ -930,8 +941,8 @@ class Call : public Stmt {
 			}
 
 			if (!isProc) {
-                std::string W = "$" + std::to_string(quadNEWTEMP()); /* ??? */
-                quadGENQUAD("par", "RET", W, "-");
+                std::string W = "$" + std::to_string(quadNEWTEMP());
+                quadGENQUAD("par", "RET", W, "-", retReal, 0, depth, 0, 0, initOffset + 6, 0, 0, size, 0);
             }
 
 			quadGENQUAD("call", "-", "-", id->getId(), lib); /* ??? */
@@ -1024,7 +1035,7 @@ class CallRVal : public RVal {
 				}
 			}
 
-			quadGENQUAD("call", "-", "-", id->getId());
+			// quadGENQUAD("call", "-", "-", id->getId());
 			place = "$" + std::to_string(quadNEWTEMP()); /* ??? */
 			quadGENQUAD("par", "RET", place, "-");
 			quadGENQUAD("call", "-", "-", id->getId(), lib, id->getDepth(), 0, 0, 0, 0, 0); /* ??? */
