@@ -1,10 +1,10 @@
 ; Needs parameter to be moved to rax prior to the call
 
-	global writeChar
+	global _writeChar
 	extern printf
 
 	section .text
-writeChar:
+_writeChar:
 	push	rax
 	push	rcx
 	push	rdi

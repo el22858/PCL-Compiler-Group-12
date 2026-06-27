@@ -9,9 +9,9 @@ str_false   db  'false',10
 false_len   equ $-str_false
 
             section .code
-            global  writeBoolean
+            global  _writeBoolean
 
-writeBoolean push  rbp
+_writeBoolean push  rbp
               mov   rbp, rsp
               push  rsi
               mov   rax, 1              ; write

@@ -306,7 +306,7 @@ inline void localOpts(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void cleanup() {
-    for (int i = 0; i < finalQuadList.size(); ++i) {
+    for (unsigned long int i = 0; i < finalQuadList.size(); ++i) {
         if (finalQuadList[i].getOpname().compare("cleanup") == 0) {
             // std::cout << "CLEANUP TIME" << std::endl;
             finalQuadList.erase(finalQuadList.begin() + i);
@@ -328,7 +328,7 @@ inline void globalOpts() { //FIXME
 
 
 inline void peepOpts() {
-    for (int i=0; i < finalQuadList.size(); ++i) {
+    for (unsigned long int i=0; i < finalQuadList.size(); ++i) {
         auto &q = finalQuadList[i];
         if (q.getOpname().compare("jump") == 0) {
             int z = std::stoi(q.getOp3());
@@ -336,7 +336,7 @@ inline void peepOpts() {
             else if (quadIsJump(finalQuadList[z-1])) quadCOPY(q, finalQuadList[z-1]);
         } else if (q.getOpname().compare("jumpl") == 0) {
             std::string label = q.getOp3();
-            for (int j = 0; j < finalQuadList.size(); ++j) {
+            for (unsigned long int j = 0; j < finalQuadList.size(); ++j) {
                 if ((finalQuadList[j].getOpname().compare("label") == 0) && (finalQuadList[j].getOp3().compare(label) == 0)) {
                     if (j == i+1) q.setOpname("cleanup");
                     else if (quadIsJump(finalQuadList[j+1])) quadCOPY(q, finalQuadList[j+1]);
@@ -355,18 +355,25 @@ inline void peepOpts() {
 inline void optimize() {
     // std::cout << "Optimizing." << std::endl;
     makeBlocks();
-    int i = 0, j = 0;
+    unsigned long int i = 0, j = 0;
     
     while ((i < labels.size()) || (j < jumps.size())) {
         hasChanged = true;
         if (j == jumps.size()) {
-            if (i < labels.size() - 1) localOpts(labels[i], labels[++i]);
-            else localOpts(labels[i++], finalQuadList.size() - 1);
+            if (i < labels.size() - 1) localOpts(labels[i], labels[i+1]);
+            else localOpts(labels[i+1], finalQuadList.size() - 1);
+            i += 1;
         } else if (i == labels.size()) {
             if (j == jumps.size() - 1) break;
-            localOpts(jumps[j], jumps[++j]);
-        } else if (labels[i] > jumps[j]) localOpts(jumps[j], jumps[++j]);
-        else if ((i < labels.size() - 2) && (labels[i+1] < jumps[j])) localOpts(labels[i], labels[++i]-1);
+            localOpts(jumps[j], jumps[j+1]);
+            j += 1;
+        } else if (labels[i] > jumps[j]) {
+            localOpts(jumps[j], jumps[j]);
+            j += 1;
+        } else if ((i < labels.size() - 2) && (labels[i+1] < jumps[j])) {
+            localOpts(labels[i], labels[i+1]-1);
+            i += 1;
+        }
         else localOpts(labels[i++], jumps[j++]);
     }
     // findTmps();

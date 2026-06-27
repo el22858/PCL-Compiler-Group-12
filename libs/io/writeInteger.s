@@ -1,10 +1,10 @@
 ; Needs parameter to be moved to rax prior to the call
 
-	global writeInteger
+	global _writeInteger
 	extern printf
 
 	section .text
-writeInteger:
+_writeInteger:
 	push	rax
 	push	rcx
 	push	rdi

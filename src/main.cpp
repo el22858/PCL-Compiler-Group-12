@@ -237,7 +237,9 @@ bool hasChanged;
 int main(int argc, char** argv) {
 	funcNum = 0;
 	yyin = fopen(argv[1], "r");
-	std::string output = argv[2]; 
+	std::string tmp = argv[1];
+	tmp = tmp.substr(tmp.find_last_of("/")+1);
+	std::string output = tmp.substr(0, tmp.size()-4); //output = argv[2]; 
 	if (yyin == nullptr) {
 		perror(argv[1]);
 		return 1;
@@ -246,7 +248,7 @@ int main(int argc, char** argv) {
 
 	yy::parser p;
 	p.parse();
-	//std::cout << ast->getName() << std::endl;
+	// std::cout << ast->getName() << std::endl;
 	//std::cout << *ast << std::endl;
 
 	quadNextTemp = 1;

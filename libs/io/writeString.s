@@ -1,8 +1,8 @@
-	global writeString
+	global _writeString
 	extern printf
 
 	section .text
-writeString:
+_writeString:
 	push	rax
 	push	rcx
 	push	rdi

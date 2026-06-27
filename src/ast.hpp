@@ -318,7 +318,7 @@ class UnOp : public RVal {
 					hasReal = true;
 				}
 				else yyerror("Expected number");
-				expr->place = "$" + std::to_string(quadNEWTEMP());
+				place = "$" + std::to_string(quadNEWTEMP());
 				depth = st.getDepth();
 				offset = st.addTemp(type->getSize());
 			} else if (op.compare("not") == 0) {
@@ -677,7 +677,7 @@ class IdList : public AST {
 class IdLabel : public Stmt {
 	private:
 		std::unique_ptr<Id> id;
-		std::unique_ptr<Stmt> stmt;
+		std::shared_ptr<Stmt> stmt;
 		int depth;
 	public:
 		IdLabel(std::unique_ptr<Id> i, std::unique_ptr<Stmt> s) : id(std::move(i)), stmt(std::move(s)) {}
@@ -702,7 +702,7 @@ class IdLabel : public Stmt {
 			if (!st.isLabel(c)) yyerror("Not a label.");
 			else {
 				stmt->sem();
-				st.insertLabelStmt(c, std::move(stmt));
+				st.insertLabelStmt(c, stmt);
 			}
 
 			depth = st.getDepth();
@@ -746,7 +746,6 @@ class ArrayItem: public LVal {
 			if (expr->typeCheck(TYPE_RES)) expr->type = st.lookup("result")->type;
 
 			if (!(lVal->typeCheck(TYPE_ARRAY))) {
-				std::cout<<"HUHHH???"<<std::endl;
 				std::cout << lVal->getName() << " should be an array but it is not. Instead, it's a(n) " << lVal->getType() << "." << std::endl;
 				std::cout << *lVal << std::endl;
 				std::cout << *(lVal->type) << std::endl;
@@ -891,7 +890,15 @@ class Call : public Stmt {
 				for (const auto &f : fL->getList()) {
 					int k = f->getIdList().size();
 					for (int j=0; j<k; j++) {
-						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) && (!(((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))) yyerror("Type mismatch.");
+						// if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) && (!(((f->getType()).compare(func->getList()[i]->type->getNameNoSize()) == 0) || (((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER))))))) yyerror("Type mismatch.");
+						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize())) {
+							if ((f->getType().compare("Real") == 0) && func->getList()[i]->typeCheck(TYPE_INTEGER));
+							else {
+								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + f->getName() + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
+								yyerror(errMsg);
+							}
+						}
+						++i;
 					}
 				}
 			}

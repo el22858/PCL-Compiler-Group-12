@@ -24,8 +24,8 @@ class Scope {
 	private:
 		std::map<std::string , STEntry> locals;
 		std::map<std::string , std::shared_ptr<FormalList>> params;
-		std::map<std::string , std::unique_ptr<Stmt>> lblStmt;
-		std::map<std::string , bool> isForm, label, isForward, isNewMap, lib;
+		std::map<std::string , std::shared_ptr<Stmt>> lblStmt;
+		std::map<std::string , bool> isForm, label, isForward, isNewMap, lib, labHasStmt;
 		std::vector<std::string> localForp;
 		int offset, n;
 
@@ -49,6 +49,7 @@ class Scope {
 			label[id] = false;
 			params[id] = nullptr;
 			lib[id] = false;
+			labHasStmt[id] = false;
 		}
 
 		void insertFormal(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL, bool isLib) {
@@ -60,6 +61,7 @@ class Scope {
 			params[id] = fL;
 			localForp.push_back(id);
 			lib[id] = isLib;
+			labHasStmt[id] = false;
 		}
 		void insertFormalForward(std::string id, std::shared_ptr<Type> type, std::shared_ptr<FormalList> fL) {
 			if (locals.find(id) != locals.end()) yyerror("Dafuq");
@@ -69,6 +71,7 @@ class Scope {
 			label[id] = false;
 			params[id] = fL;
 			lib[id] = false;
+			labHasStmt[id] = false;
 		}
 
 		void insertLabel(std::string id, std::shared_ptr<Type> type) {
@@ -79,6 +82,7 @@ class Scope {
 			label[id] = true;
 			params[id] = nullptr;
 			lib[id] = false;
+			labHasStmt[id] = false;
 		}
 
 		STEntry* lookup(std::string id) {
@@ -100,7 +104,12 @@ class Scope {
 
 		bool isLabel(std::string c) { return label[c]; }
 		bool validLabel(std::string c) { return (lblStmt.find(c) != lblStmt.end()); }
-		void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { lblStmt[c] = std::move(s); }
+		void insertLabelStmt(std::string c, std::shared_ptr<Stmt> s) {
+			if (!labHasStmt[c]) {
+				lblStmt[c] = s;
+				labHasStmt[c] = true;
+			} else yyerror("Label has already been set.\n");
+		}
 
 		bool isLib(std::string c) { return lib[c]; }
 
@@ -127,9 +136,10 @@ class Scope {
 class SymbolTable {
 	private:
 		std::vector<Scope> scopes;
+		std::vector<std::string> funcs;
 		int n;
 	public:
-		SymbolTable() : scopes(), n(0) {}
+		SymbolTable() : scopes(), funcs(), n(0) {}
 
 		void insert(std::string id, std::shared_ptr<Type> t, bool isParam = false) { scopes.back().insert(id, t, isParam); }
 		void insertFormal(std::string id, std::shared_ptr<Type> t, std::shared_ptr<FormalList> fL, bool isLib = false) { scopes.back().insertFormal(id, t, fL, isLib); }
@@ -179,7 +189,7 @@ class SymbolTable {
 
 		bool isLabel(std::string c) { return scopes.back().isLabel(c); }
 		bool validLabel(std::string c) { return scopes.back().validLabel(c); }
-		void insertLabelStmt(std::string c, std::unique_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, std::move(s)); }
+		void insertLabelStmt(std::string c, std::shared_ptr<Stmt> s) { scopes.back().insertLabelStmt(c, s); }
 
 		bool isLib(std::string c) {
 			for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {

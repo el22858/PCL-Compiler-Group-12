@@ -143,9 +143,10 @@
 %%
 
 program : "program" T_id ";" body "." {
-        /* std::cout << *$4 <<"\n"; */
         ast = $4;
         ast->setName($2);
+        /* Uncomment the following line to see if the AST is built correctly */
+        /* std::cout << ast->getName() << std::endl; */
     }
     ;
 
@@ -171,7 +172,7 @@ declaration : T_id idList ":" type ";"                      {  auto x = $2; x->a
     ;
 
 header : "procedure" T_id "(" formal formalList ")"         { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), std::move(x)); /* $5->append($4); $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back()), $5); */ ids.pop_back(); }
-    | "procedure" T_id "(" ")"                              { std::cout << ids.back() << std::endl; $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
+    | "procedure" T_id "(" ")"                              { $$ = std::make_unique<Procedure>(std::make_unique<Id>(ids.back())); ids.pop_back(); }
     | "function" T_id "(" formal formalList ")" ":" type    { auto x = $5; x->appendAtStart($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, std::move(x)); /* $5->append($4); $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $8, $5); */ ids.pop_back(); }
     | "function" T_id "(" ")" ":" type                      { $$ = std::make_unique<Function>(std::make_unique<Id>(ids.back()), $6); ids.pop_back(); }
     ;

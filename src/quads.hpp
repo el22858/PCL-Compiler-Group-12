@@ -46,7 +46,7 @@ class quad {
         bool hasReal;
 
     public:
-        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false, int nx = 0, int xoff = 0, int ny = 0, int yoff = 0, int nz = 0, int zoff = 0, int xs = 0, int ys = 0, int zs = 0) : tag(t), op(opname), x(op1), y(op2), z(op3), n_x(nx), n_y(ny), n_z(nz), x_off(xoff), y_off(yoff), z_off(zoff), hasReal(hR), x_size(xs), y_size(ys), z_size(zs) {}
+        quad(int t, std::string opname, std::string op1, std::string op2, std::string op3, bool hR = false, int nx = 0, int xoff = 0, int ny = 0, int yoff = 0, int nz = 0, int zoff = 0, int xs = 0, int ys = 0, int zs = 0) : tag(t), op(opname), x(op1), y(op2), z(op3), n_x(nx), n_y(ny), n_z(nz), x_off(xoff), y_off(yoff), z_off(zoff), x_size(xs), y_size(ys), z_size(zs), hasReal(hR) {}
 
         int getTag() const { return tag; }
         std::string getOpname() const { return op; }
@@ -132,7 +132,7 @@ inline void quadBACKPATCH(std::vector<int> l, std::string newAd) { for (const au
 inline std::string quadADDRESSOF(std::string x) {
     std::string res = "";
     if ((x[0] == '[') &&  (x[x.length() - 1] == ']')) {
-        for (int i = 1; i < x.length() - 1; ++i) res += x[i];
+        for (unsigned long int i = 1; i < x.length() - 1; ++i) res += x[i];
     } else res = "{" + x + "}";
     return res;
 }

@@ -97,7 +97,7 @@ ESCAPE \\["t""n""r""0"\'\"\\]
 
 
 {L}({L}|{D}|_)*                             { ids.push_back(strdup(yytext)); /* return T_id; */ return yy::parser::make_T_id(strdup(yytext), loc); /* variable or function/procedure name */ }
-{D}+\.{D}+(e[\+\-]?{D}+)?                   { constReals.push_back(std::stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(std::stod(yytext),loc); }
+{D}+\.{D}+([eE][\+\-]?{D}+)?                   { constReals.push_back(std::stod(yytext)); /* return real_const; */ return yy::parser::make_real_const(std::stod(yytext),loc); }
 {D}+                                        { constInts.push_back(std::atoi(yytext)); /* return integer_const; */ return yy::parser::make_integer_const(std::atoi(yytext), loc); }
 
 \'(({ESCAPE})|[^\"\'\\])\'                  { constChars.push_back(strdup(yytext)); /* return char_const; */ return yy::parser::make_char_const(strdup(yytext), loc); /* Any character, including '\n' */ }

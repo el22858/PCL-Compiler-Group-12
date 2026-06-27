@@ -25,7 +25,7 @@ inline void prologue(std::string mainName) {
 	tmp = "\t\tglobal main\n";
 
 	// for (const auto &x: libsUsed) assembly += "\t\textern " + x + "\n";
-	for (unsigned long int i = 0; i < libsUsed.size(); ++i) tmp += "\t\textern " + libsUsed[i] + "\n";
+	for (unsigned long int i = 0; i < libsUsed.size(); ++i) tmp += "\t\textern _" + libsUsed[i] + "\n";
 	tmp += "\n\t\tsection .text\nmain:\n\t\tcall _" + mainName + "_" + std::to_string(curFNum) + "\n\t\tret\n";
 	assembly = tmp + assembly;
 }
@@ -259,7 +259,7 @@ inline void translate(std::vector<quad> fQL) {
 			updateAL(q.getZdepth());
 			if (!q.withReal()) assembly += "\t\tcall\t" + ass_name(z) + "\n";
 			else {
-				assembly += "\t\tcall\t" + z + "\n";
+				assembly += "\t\tcall\t_" + z + "\n";
 				libsUsed.push_back(z);
 			}
 			assembly += "\t\tadd\t" + sp + ", " + std::to_string(q.getZsize() + 4) + "\n";
