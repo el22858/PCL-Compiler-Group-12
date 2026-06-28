@@ -201,7 +201,7 @@ class ITE : public Stmt {
 			if (expr->typeCheck(TYPE_BOOLEAN)) {
 				stmt1->sem();
 				if (stmt2)  stmt2->sem();
-			} else yyerror("Expected boolean for ITE.");
+			} else yyerror("Expected boolean for ITE. Instead got " + expr->getName() + ", which is a(n)" + expr->type->getName() + ".");
 		}
 
 		virtual void igen() override {
@@ -253,7 +253,7 @@ class While : public Stmt {
 		virtual void sem() override {
 			expr->sem();
 			if (expr->typeCheck(TYPE_BOOLEAN)) stmt->sem();
-			else yyerror("Expected boolean for While loop.");
+			else yyerror("Expected boolean for While loop. Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName() + ".");
 		}
 
 		virtual void igen() override {
@@ -311,7 +311,7 @@ class UnOp : public RVal {
 					type = std::make_shared<Real>();
 					hasReal = true;
 				}
-				else yyerror("Expected number");
+				else yyerror("Expected number after plus sign. Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName() + ".");
 				place = expr->place;
 			} else if (op.compare("-") == 0) {
 				if (expr->typeCheck(TYPE_INTEGER)) type = std::make_shared<Integer>();
@@ -319,14 +319,14 @@ class UnOp : public RVal {
 					type = std::make_shared<Real>();
 					hasReal = true;
 				}
-				else yyerror("Expected number");
+				else yyerror("Expected number after minus sign. Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName());
 				place = "$" + std::to_string(quadNEWTEMP());
 				depth = st.getDepth();
 				offset = st.addTemp(type->getSize());
 			} else if (op.compare("not") == 0) {
 				if (expr->typeCheck(TYPE_BOOLEAN)) type = std::make_shared<Boolean>();
-				else yyerror("Expected boolean.");
-			} else yyerror("Unary Operator not recognized"); // Trash
+				else yyerror("Expected boolean after 'not' operation. Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName() + ".");
+			} else yyerror("Compiler error: unreachable flow control point reached.");
 		}
 
 		virtual void igen() override {
@@ -377,12 +377,21 @@ class BinOp : public RVal {
 
 						hasReal = true;
 					}
-					else yyerror("Expected int or real.");
+					else yyerror("Expected two numbers. Instead got " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 				} else if (expr1->typeCheck(TYPE_REAL)) {
 					if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) type = std::make_shared<Real>();
-					else yyerror("Expected int or real.");
+					else yyerror("Expected two numbers. Instead got " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 					
 					hasReal = true;
+				} else {
+					std::string opName;
+					if (op.compare("+") == 0) opName = "addition";
+					else if (op.compare("-") == 0) opName = "subtraction";
+					else if (op.compare("*") == 0) opName = "multiplication";
+					else yyerror("Compiler error: unreachable flow control point reached.");
+
+					if ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL))) yyerror("Expected two integers for " + opName + ". Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ", and " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
+					else yyerror("Expected integer for " + opName + ". Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ".");
 				}
 				place = "$" + std::to_string(quadNEWTEMP());
 				depth = st.getDepth();
@@ -394,7 +403,7 @@ class BinOp : public RVal {
 				depth = st.getDepth();
 				offset = st.addTemp(type->getSize());
 				if (((expr1->typeCheck(TYPE_INTEGER)) || ((expr1->typeCheck(TYPE_REAL)))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Real>();
-				else yyerror("Expected int or real.");
+				else yyerror("Expected two numbers for division. Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ", and " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 
 				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) hasReal  = true;
 
@@ -405,30 +414,30 @@ class BinOp : public RVal {
 				expr1->sem();
 				expr2->sem();
 				if ((expr1->typeCheck(TYPE_INTEGER)) && (expr2->typeCheck(TYPE_INTEGER))) type = std::make_shared<Integer>();
-				else yyerror("Expected int.");
+				else yyerror("Expected two integers for division or modulo. Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ", and " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 				
 				place = "$" + std::to_string(quadNEWTEMP());
 				depth = st.getDepth();
 				offset = st.addTemp(type->getSize());
 			} else if ((op.compare("and") == 0) || (op.compare("or") == 0)) {
 				expr1->sem();
-				if (!expr1->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean.");
+				if (!expr1->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean for '" + op + "' operation. Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ".");
 
 				expr2->sem();
-				if (!expr2->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean.");
+				if (!expr2->typeCheck(TYPE_BOOLEAN)) yyerror("Expected boolean for '" + op + "' operation. Instead got " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 				type = std::make_shared<Boolean>();
 			} else if ((op.compare("<") == 0) || (op.compare(">") == 0) || (op.compare("<=") == 0) || (op.compare(">=") == 0)) {
 				expr1->sem();
 				expr2->sem();
 				if (((expr1->typeCheck(TYPE_INTEGER)) || (expr1->typeCheck(TYPE_REAL))) && ((expr2->typeCheck(TYPE_INTEGER)) || (expr2->typeCheck(TYPE_REAL)))) type = std::make_shared<Boolean>();
-				else yyerror("Expected int or real.");
+				else yyerror("Expected two numbers for comparison. Instead got " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ", and " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 
 				if (expr1->typeCheck(TYPE_REAL) || expr2->typeCheck(TYPE_REAL)) hasReal  = true;
 			} else if ((op.compare("=") == 0) || (op.compare("<>") == 0)) {
 				expr1->sem();
 				expr2->sem();
 				if (expr1->type->getName().compare(expr2->type->getName()) == 0) type = std::make_shared<Boolean>();
-				else yyerror("Type mismatch!");
+				else yyerror("Type mismatch for equality/inequality check! The first operand is " + expr1->getName() + ", which is a(n) " + expr1->type->getName() + ", while the second operand is " + expr2->getName() + ", which is a(n) " + expr2->type->getName() + ".");
 
 				if (expr1->typeCheck(TYPE_REAL) || (expr2->typeCheck(TYPE_REAL))) hasReal  = true;
 			}
@@ -701,7 +710,7 @@ class IdLabel : public Stmt {
 		}
 		virtual void sem() override {
 			std::string c = id->getId();
-			if (!st.isLabel(c)) yyerror("Not a label.");
+			if (!st.isLabel(c)) yyerror(c + "is used as a label, but there is no label with that name, in the scope that it's used in.");
 			else {
 				stmt->sem();
 				st.insertLabelStmt(c, stmt);
@@ -747,13 +756,8 @@ class ArrayItem: public LVal {
 			expr->sem();
 			if (expr->typeCheck(TYPE_RES)) expr->type = st.lookup("result")->type;
 
-			if (!(lVal->typeCheck(TYPE_ARRAY))) {
-				std::cout << lVal->getName() << " should be an array but it is not. Instead, it's a(n) " << lVal->getType() << "." << std::endl;
-				std::cout << *lVal << std::endl;
-				std::cout << *(lVal->type) << std::endl;
-				exit(0);
-			}
-			else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer");
+			if (!(lVal->typeCheck(TYPE_ARRAY))) yyerror(lVal->getName() + " should be an array, but it is not. Instead it's a(n) " + lVal->type->getName() + ", in the scope that it's being used in.");
+			else if (!(expr->typeCheck(TYPE_INTEGER))) yyerror("Expected integer for indexing in the array " + lVal->getName() + ". Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName() + ".");
 
 			type = lVal->type->getArrayType();
 			place = "$" + std::to_string(quadNEWTEMP());
@@ -877,7 +881,7 @@ class Call : public Stmt {
 
 			std::string funcName = id->getId();
 			st.lookup(funcName); /* Will throw error if it doesn't exist */
-			if (!st.isFormal(funcName)) yyerror("Can't be called.");
+			if (!st.isFormal(funcName)) yyerror(funcName + " is not a callable function or procedure, in the scope that it's being used in.");
 
 			fL = st.getParams(funcName);
 
@@ -886,7 +890,7 @@ class Call : public Stmt {
 				for (const auto &f : fL->getList()) expArgs += f->getIdList().size();
 			}
 			if (func) actArgs = func->getList().size();
-			if (expArgs != actArgs) yyerror("Incorrect number of arguments given.");
+			if (expArgs != actArgs) yyerror("Incorrect number of arguments given for function or procedure '" + funcName + "'. Got " + std::to_string(actArgs) + " real parameters, but was expecting " + std::to_string(expArgs) + ".");
 
 			if (!(fL->isEmpty())) {
 				for (const auto &f : fL->getList()) {
@@ -896,11 +900,11 @@ class Call : public Stmt {
 						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize())) {
 							if ((f->getType().compare("Real") == 0) && func->getList()[i]->typeCheck(TYPE_INTEGER));
 							else {
-								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + f->getName() + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
+								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + funcName + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
 								yyerror(errMsg);
 							}
 						}
-						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure expects a call-by-reference parameter, but an RVal was given instead.");
+						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure '" + funcName + "' expects a call-by-reference parameter, but an RVal was given instead, in the form of " + func->getList()[i]->getName() + ".");
 						++i;
 					}
 				}
@@ -991,7 +995,7 @@ class CallRVal : public RVal {
 
 			std::string funcName = id->getId();
 			st.lookup(funcName); /* Will throw error if it doesn't exist */
-			if (!st.isFormal(funcName)) yyerror("Can't be called.");
+			if (!st.isFormal(funcName)) yyerror(funcName + " is not a callable function or procedure, in the scope that it's being used in.");
 
 			fL = st.getParams(funcName);
 
@@ -1000,7 +1004,7 @@ class CallRVal : public RVal {
 				for (const auto &f : fL->getList()) expArgs += f->getIdList().size();
 			}
 			if (func) actArgs = func->getList().size();
-			if (expArgs != actArgs) yyerror("Incorrect number of arguments given.");
+			if (expArgs != actArgs) yyerror("Incorrect number of arguments given for function or procedure '" + funcName + "'. Got " + std::to_string(actArgs) + " real parameters, but was expecting " + std::to_string(expArgs) + ".");
 
 			if (!(fL->isEmpty())) {
 				for (const auto &f : fL->getList()) {
@@ -1009,11 +1013,13 @@ class CallRVal : public RVal {
 						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize())) {
 							if ((f->getType().compare("Real") == 0) && func->getList()[i]->typeCheck(TYPE_INTEGER));
 							else {
-								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + f->getName() + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
+								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + funcName + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
 								yyerror(errMsg);
 							}
 						}
-						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure expects a call-by-reference parameter, but an RVal was given instead.");}
+						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure '" + funcName + "' expects a call-by-reference parameter, but an RVal was given instead, in the form of " + func->getList()[i]->getName() + ".");
+						++i;
+					}
 				}
 			}
 
@@ -1093,10 +1099,10 @@ class Dispose: public Stmt {
 		virtual void sem() override {
 			lVal->sem();
 			if (lVal->typeCheck(TYPE_RES)) lVal->type = st.lookup("result")->type;
-			if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer.");
+			if (!(lVal->typeCheck(TYPE_POINTER))) yyerror("Expected pointer for disposal. Instead got " + lVal->getName() + ", which is a(n) " + lVal->type->getName() + ".");
 			if (!st.isNew(lVal->getName())) yyerror("Cannot dispose of non-new value.");
 
-			if (bracket && (lVal->type->getPointerType()->getType() != TYPE_ARRAY)) yyerror("Something something pointer to array.");
+			if (bracket && (lVal->type->getPointerType()->getType() != TYPE_ARRAY)) yyerror("Pointer " + lVal->getName() + " scheduled for disposal is used with brackets, despite not being a pointer to an array.");
 
 			oldPlace = lVal->place;
 			lVal = std::move(std::make_unique<NilLVal>());
@@ -1162,10 +1168,10 @@ class Assign: public Stmt {
 				if (!(st.hasRes())) st.insert("result", expr->type);
 
 				std::shared_ptr<Type> resType = st.lookup(st.getParent())->type;
-				if (resType->getType() == TYPE_PROC) yyerror("Procedure shouldn't have a result statement.");
+				if (resType->getType() == TYPE_PROC) yyerror("Procedure" + resType->getName() + "shouldn't have a result statement.");
 
-				if (expr->type->getType() == TYPE_ARRAY) yyerror("Function cannot return an array.");
-				if (expr->type->getType() != resType->getType()) yyerror("Type mismatch.");
+				if (expr->type->getType() == TYPE_ARRAY) yyerror("Functions cannot return an array. " + expr->getName() + " shouldn't be used this way.");
+				if (expr->type->getType() != resType->getType()) yyerror("Type mismatch for assignment, between " + expr->getName() + " and " + resType->getName() +".");
 
 				lval->type = expr->type;
 			} else if (lval->type->getName().compare(expr->type->getName())) {
@@ -1235,15 +1241,15 @@ class New: public Stmt {
 			lVal->sem();
 
 			if (lVal->type->getType() == TYPE_RES) lVal->type = std::move(st.lookup("result")->type);
-			if (lVal->type->getType() != TYPE_POINTER) yyerror("Expected pointer for new.");
+			if (lVal->type->getType() != TYPE_POINTER) yyerror("Expected pointer for new. Instead got " + lVal->getName() + ", which is a(n) " + lVal->type->getName() + ".");
 
 			if (expr) {
-				if (lVal->type->getPointerType()->getType() != TYPE_ARRAY) yyerror("Expected pointer to array");
+				if (lVal->type->getPointerType()->getType() != TYPE_ARRAY) yyerror("Expected pointer to array. Instead got " + lVal->getName() + ", which is a pointer to " + lVal->type->getPointerType()->getName() + ".");
 
 				expr->sem();
 
 				if (expr->type->getType() == TYPE_RES) expr->type = std::move(st.lookup("result")->type);
-				if (expr->type->getType() != TYPE_INTEGER) yyerror("Expected integer.");	
+				if (expr->type->getType() != TYPE_INTEGER) yyerror("Expected integer for new pointer size. Instead got " + expr->getName() + ", which is a(n) " + expr->type->getName() + ".");	
 			}
 
 			st.makeNew(lVal->getName());
@@ -1284,8 +1290,8 @@ class Goto: public Stmt {
 		}
 		virtual void sem() override {
 			std::string label = id->getId();
-			if (!st.isLabel(label)) yyerror("Label Not Found.\n");
-			else if (!st.validLabel(label)) yyerror("Label has no Statement.\n");
+			if (!st.isLabel(label)) yyerror("Label " + label + " not found.\n");
+			else if (!st.validLabel(label)) yyerror("Label " + label + " is being used with no statement to match.\n"); // ???
 		}
 
 		virtual void igen() override {
@@ -1400,7 +1406,7 @@ class Procedure : public Header {
 				if (oldFormals) oldName = oldFormals->getName();
 				if (!(formalList->getList().empty())) newName = formalList->getName();
 
-				if(oldName.compare(newName)) yyerror("Procedure has two different declarations.");
+				if(oldName.compare(newName)) yyerror("Procedure " + id->getId() + " has two different declarations.");
 
 				st.backward(id->getId());
 				st.refreshFormals(id->getId(), oldFormals);
@@ -1449,7 +1455,7 @@ class Function : public Header {
 				if (oldFormals) oldName = oldFormals->getName();
 				if (!(formalList->getList().empty())) newName = formalList->getName();
 
-				if(oldName.compare(newName)) yyerror("Function has two different declarations.");
+				if(oldName.compare(newName)) yyerror("Function " + id->getId() + " has two different declarations.");
 
 				st.backward(id->getId());
 				st.refreshFormals(id->getId(), oldFormals);
@@ -1665,7 +1671,7 @@ class Deref : public LVal {
 		virtual void sem() override {
 			expr->sem();
 			if (expr->typeCheck(TYPE_RES)) expr->type = std::move(st.lookup("result")->type);
-			if (!(expr->typeCheck(TYPE_POINTER))) yyerror("Expression is not a pointer.");
+			if (!(expr->typeCheck(TYPE_POINTER))) yyerror("Expression " + expr->getName() + " is not a pointer, and thus cannot be dereferenced.");
 			type = expr->type->getPointerType();
 
 			std::string W = "$" + quadNEWTEMP();
