@@ -4,12 +4,14 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <set>
 #include "quads.hpp"
 #include "ast.hpp"
 
 extern std::unique_ptr<Body> ast;
 extern std::string assembly;
-extern std::vector<std::string> stringsUsed, libsUsed;
+extern std::vector<std::string> stringsUsed;
+extern std::set<std::string> libsUsed;
 extern int n_cur;
 static const std::string ax = "eax", cx = "ecx", dx = "edx", st0 = "rax", st1 = "rcx", si = "rsi", bp = "rbp", sp = "rsp", al = "al", di = "di", rdi = "rdi";
 static std::string curFunc;
@@ -25,7 +27,7 @@ inline void prologue(std::string mainName) {
 	tmp = "\t\tglobal main\n";
 
 	// for (const auto &x: libsUsed) assembly += "\t\textern " + x + "\n";
-	for (unsigned long int i = 0; i < libsUsed.size(); ++i) tmp += "\t\textern _" + libsUsed[i] + "\n";
+	for (const auto &l : libsUsed) tmp += "\t\textern _" + l + "\n";
 	tmp += "\n\t\tsection .text\nmain:\n\t\tcall _" + mainName + "_" + std::to_string(curFNum) + "\n\t\tret\n";
 	assembly = tmp + assembly;
 }
@@ -260,7 +262,7 @@ inline void translate(std::vector<quad> fQL) {
 			if (!q.withReal()) assembly += "\t\tcall\t" + ass_name(z) + "\n";
 			else {
 				assembly += "\t\tcall\t_" + z + "\n";
-				libsUsed.push_back(z);
+				libsUsed.insert(z);
 			}
 			assembly += "\t\tadd\t" + sp + ", " + std::to_string(q.getZsize() + 4) + "\n";
 		} else if (op.compare("par") == 0) {
@@ -279,7 +281,7 @@ inline void translate(std::vector<quad> fQL) {
 					loadReal(x, q.getXdepth(), q.getXoffset(), q.getXsize());
 					assembly += "\t\tsub\t" + sp + ", 10\n";
 					assembly += "\t\tmov\t" + si + ", " + sp + "\n";
-					assembly += "\t\tfstp\ttbyte [" + si + "]\n";
+					assembly += "\t\tfstp\tbyte [" + si + "]\n";
 				}
 			} else {
 				loadAddr(rdi, x, q.getXdepth(), q.getXoffset(), q.getXsize());
@@ -344,6 +346,21 @@ inline void translate(std::vector<quad> fQL) {
 				assembly += "\t\tsub\t" + ax + ", " + cx + "\n";
 				store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
 			}
+		} else if (op.compare("and") == 0) {
+			load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+			load(cx, y, q.getYdepth(), q.getYoffset(), q.getYsize());
+			assembly += "\t\tand\t" + ax + ", " + cx + "\n";
+			store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+		} else if (op.compare("<<") == 0) {
+			load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+			load(cx, y, q.getYdepth(), q.getYoffset(), q.getYsize());
+			assembly += "\t\tshl\t" + ax + ", " + cx + "\n";
+			store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+		} else if (op.compare(">>") == 0) {
+			load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+			load(cx, y, q.getYdepth(), q.getYoffset(), q.getYsize());
+			assembly += "\t\tshr\t" + ax + ", " + cx + "\n";
+			store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
 		} else if (op.compare("*") == 0) {
 			if (q.withReal()) {
 				loadReal(x, q.getXdepth(), q.getXoffset(), q.getXsize());
@@ -369,12 +386,18 @@ inline void translate(std::vector<quad> fQL) {
 				assembly += "\t\tidiv\t" + cx + "\n";
 				store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
 			}
-		} else if (op.compare("%") == 0) {
+		} else if (op.compare("mod") == 0) {
 			load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
 			assembly += "\t\tcwd\n";
 			load(cx, y, q.getYdepth(), q.getYoffset(), q.getYsize());
 			assembly += "\t\tidiv\t" + cx + "\n";
 			store(dx, z, q.getZdepth(), q.getZoffset(), q.getZsize());
+		} else if (op.compare("duv") == 0) {
+			load(ax, x, q.getXdepth(), q.getXoffset(), q.getXsize());
+			assembly += "\t\tcwd\n";
+			load(cx, y, q.getYdepth(), q.getYoffset(), q.getYsize());
+			assembly += "\t\tidiv\t" + cx + "\n";
+			store(ax, z, q.getZdepth(), q.getZoffset(), q.getZsize());
 		} else if (op.compare("=") == 0) {
 			std::string instr;
 			if (q.withReal()) {

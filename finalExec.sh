@@ -3,6 +3,6 @@
 IN="$1"
 temp="${IN##*/}"
 final="${temp%.*}"
-./pcl "$IN" "$final"
+./pcl "$@"
 nasm -f elf64 "./${final}.asm"
 gcc "${final}.o" "lib.a"

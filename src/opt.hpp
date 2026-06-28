@@ -22,32 +22,34 @@ inline void makeBlocks() { // FIXME: is missing out on quite a few jumps, possib
 
     for (const auto &q : finalQuadList) {
         std::string op = q.getOpname();
-        if (op.compare("label") == 0) labels.push_back(q.getTag()-1);
+        if (op.compare("label") == 0) labels.push_back(q.getTag());
         else if (op.compare("unit") == 0) labels.push_back(q.getTag()-1); 
-
+        else if (op.compare("endu") == 0) jumps.push_back(q.getTag());
         else if (op.compare("jump") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
-        } else if (op.compare("ifb") == 0) {
-            jumps.push_back(q.getTag()-1);
+        } else if (op.compare("call") == 0) jumps.push_back(q.getTag());
+        else if (op.compare("jumpl") == 0) jumps.push_back(q.getTag());
+        else if (op.compare("ifb") == 0) {
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("=") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<>") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare("<=") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare(">") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         } else if (op.compare(">=") == 0) {
-            jumps.push_back(q.getTag()-1);
+            jumps.push_back(q.getTag());
             labels.push_back(std::stoi(q.getOp3())-1);
         }
     }
@@ -68,15 +70,16 @@ inline void makeBlocks() { // FIXME: is missing out on quite a few jumps, possib
 }
 
 inline void algebraSimple(int start = 0, int end = finalQuadList.size()-1) {
-    for (int i = start; i <= end; i++) {
+    for (int i = start; i < end; i++) {
         auto &q = finalQuadList[i];
         std::string op = q.getOpname();
         if ((op.compare("+") == 0) || (op.compare("-") == 0)) {
             if (is_number(q.getOp1())) {
                 int o1 = std::stoi(q.getOp1());
                 if (o1 == 0) {  // 0 + x = x and 0 - x = -x
-                    if (op.compare("+") == 0) q.setOpname(":=");
-                    q.setOp1(q.getOp2());
+                    q.setOpname(":=");
+                    if (op.compare("+") == 0) q.setOp1(q.getOp2());
+                    else q.setOp1("-" + q.getOp2());
                     q.setOp2("-");
                     hasChanged = true;
                 }
@@ -118,6 +121,7 @@ inline void algebraSimple(int start = 0, int end = finalQuadList.size()-1) {
             }
         } else if ((op.compare("div") == 0)) {
             if (is_number(q.getOp2())) {
+                // std::cout << "dafuq" << std::endl;
                 int o2 = std::stoi(q.getOp2());
                 if (o2 == 1) {  // x div 1 = x
                     q.setOpname(":=");
@@ -148,7 +152,7 @@ inline void algebraSimple(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void constantFolding(int start = 0, int end = finalQuadList.size()-1) {
-    for (int i = start; i <= end; ++i) {
+    for (int i = start; i < end; ++i) {
         auto &q = finalQuadList[i];
         if ((is_number(q.getOp1())) && (is_number(q.getOp2()))) {
             std::string op = q.getOpname();
@@ -197,7 +201,7 @@ inline void constantFolding(int start = 0, int end = finalQuadList.size()-1) {
                 q.setOp2("-");
             }
 
-            else std::cout << op << " has not yet been implemented" << std::endl;
+            // else std::cout << op << " has not yet been implemented" << std::endl;
             // std::cout << "dude" << std::endl;
             hasChanged = true;
         }
@@ -209,7 +213,7 @@ inline void singleAss(int start = 0, int end = finalQuadList.size()-1) {
         auto &q = finalQuadList[i];
         std::string op = q.getOpname(), z = q.getOp3();
         if ((op.compare("+") == 0) || (op.compare("-") == 0) || (op.compare("*") == 0) || (op.compare("div") == 0) || (op.compare("mod") == 0) || (op.compare("/") == 0) || (op.compare("<<") == 0) || (op.compare(">>") == 0) || (op.compare("and") == 0) || (op.compare(":=") == 0)) {
-            for (int j = i+1; j <= end; ++j) {
+            for (int j = i+1; j < end; ++j) {
                 if (z.compare(finalQuadList[j].getOp3()) == 0) {
                     std::string newZ = "$" + std::to_string(quadNEWTEMP());
                     q.setOp3(newZ);
@@ -225,10 +229,11 @@ inline void singleAss(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void commonSubElim(int start = 0, int end = finalQuadList.size()-1) {
-    for (int i=start; i <= end; ++i) {
+    for (int i=start; i < end; ++i) {
         std::string op = finalQuadList[i].getOpname(), x = finalQuadList[i].getOp1(), y = finalQuadList[i].getOp2(), z = finalQuadList[i].getOp3();
 
-        for (int j = i+1; j <= end; ++j) {
+        if (op.compare(":=") == 0) continue;
+        for (int j = i+1; j < end; ++j) {
             auto &q = finalQuadList[j];
             if ((op.compare(q.getOpname()) == 0) && (x.compare(q.getOp1()) == 0) && (y.compare(q.getOp2()) == 0) && (z.compare(q.getOp3()) != 0)) {
                 q.setOpname(":=");
@@ -244,31 +249,39 @@ inline void commonSubElim(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void localCopyProp(int start = 0, int end = finalQuadList.size()-1) {
-    for (int i = start; i<= end; ++i) {
+    for (int i = start; i< end; ++i) {
+        bool canClean = false;
         auto &q = finalQuadList[i];
         if (q.getOpname().compare(":=") == 0) {
             std::string x = q.getOp1(), z = q.getOp3();
-            for (int j = i+1; j <= end; ++j) {
+            if (is_tmp(x)) continue;
+            for (int j = i+1; j < end; ++j) {
                 auto &p = finalQuadList[j];
                 if (p.getOp1().compare(z) == 0) {
                     p.setOp1(x);
                     p.setXdepth(q.getXdepth());
                     p.setXoffset(q.getXoffset());
                     p.setXsize(q.getXsize());
+                    hasChanged = true;
+                    canClean = true;
                 }
                 if (p.getOp2().compare(z) == 0) {
                     p.setOp2(x);
                     p.setYdepth(q.getXdepth());
                     p.setYoffset(q.getXoffset());
                     p.setYsize(q.getXsize());
+                    hasChanged = true;
+                    canClean = true;
                 }
             }
+
+            if (is_tmp(z) && canClean) q.setOpname("cleanup");
         }
     }
 }
 
 inline void revProp(int start = 0, int end = finalQuadList.size()-1) {
-    for (int i = start; i <= end; ++i) {
+    for (int i = start; i < end; ++i) {
         auto &q = finalQuadList[i];
         if (q.getOpname().compare(":=") == 0) {
             std::string z = q.getOp3();
@@ -291,18 +304,20 @@ inline void revProp(int start = 0, int end = finalQuadList.size()-1) {
 }
 
 inline void localOpts(int start = 0, int end = finalQuadList.size()-1) {
-    std::cout << start << " " << end << std::endl;
+    // std::cout << start << " " << end << std::endl;
+    // std::cout << finalQuadList[start] << std::endl;
 
     singleAss(start, end);
     while (hasChanged){
         // std::cout << "Trying again." << std::endl;
+        // for (auto i = start; i < end; ++i) std::cout << finalQuadList[i] << std::endl;
         hasChanged = false;
         algebraSimple(start, end);
         constantFolding(start, end);
         commonSubElim(start, end);
         localCopyProp(start, end);
     }
-    // revProp(start, end);
+    revProp(start, end);
 }
 
 inline void cleanup() {
@@ -356,25 +371,38 @@ inline void optimize() {
     // std::cout << "Optimizing." << std::endl;
     makeBlocks();
     unsigned long int i = 0, j = 0;
+
+    // for (const auto &l : labels) std::cout << l << std::endl;
+    // std::cout << std::endl;
+    // for (const auto &jump : jumps) std::cout << jump << std::endl;
+    // std::cout << std::endl;
+    // std::cout << labels.size() << " " << jumps.size() << std::endl;
     
     while ((i < labels.size()) || (j < jumps.size())) {
+        // std::cout << i << " " << j << std::endl;
         hasChanged = true;
         if (j == jumps.size()) {
+            // std::cout << "Test 1" << std::endl;
             if (i < labels.size() - 1) localOpts(labels[i], labels[i+1]);
             else localOpts(labels[i+1], finalQuadList.size() - 1);
             i += 1;
         } else if (i == labels.size()) {
+            // std::cout << "Test 2" << std::endl;
             if (j == jumps.size() - 1) break;
             localOpts(jumps[j], jumps[j+1]);
             j += 1;
         } else if (labels[i] > jumps[j]) {
+            // std::cout << "Test 3" << std::endl;
             localOpts(jumps[j], jumps[j]);
             j += 1;
-        } else if ((i < labels.size() - 2) && (labels[i+1] < jumps[j])) {
+        } else if ((i + 2 < labels.size()) && (labels[i+1] < jumps[j])) {
+            // std::cout << "Test 4" << std::endl;
+            // std::cout << i << " " << labels.size() << " " << (i < labels.size() - 2) << " " << (i < (labels.size()-2)) << " " << labels[i+1] << " " << jumps[j] << std::endl;
             localOpts(labels[i], labels[i+1]-1);
             i += 1;
+            // std::cout << std::endl;
         }
-        else localOpts(labels[i++], jumps[j++]);
+        else localOpts(labels[i++], jumps[j]);
     }
     // findTmps();
 

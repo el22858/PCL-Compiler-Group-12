@@ -10,6 +10,11 @@ _writeInteger:
 	push	rdi
 	mov	rdi, format
 	mov	rsi, rax
+	;and rax, 1 << 31
+	;jz timeToPrint
+	;xor rsi, 0xffffffff
+	;sub rsi, 0xfffffffd
+timeToPrint:
 	xor	rax, rax
 	call	printf WRT ..plt
 	pop	rdi
@@ -17,4 +22,4 @@ _writeInteger:
 	pop	rax
 	ret
 format:
-	db	"%ld", 0
+	db	"%d", 0

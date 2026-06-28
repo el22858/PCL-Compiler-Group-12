@@ -4,11 +4,13 @@
 _abs:
     push    rbp
     mov     rbp, rsp
-    mov     ax, di
-    or      ax, ax
+    mov     eax, [rbp + 8]
+    ;mov     eax, di
+    or      eax, eax
     jge     ok
-    neg     ax
+    neg     eax
 ok:
-    and     rax, 0xffff
+    and     eax, 0xffffffff
+    mov     [rbp + 4], eax
     pop     rbp
     ret

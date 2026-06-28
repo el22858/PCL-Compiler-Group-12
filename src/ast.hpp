@@ -92,6 +92,7 @@ class Expr : public AST {
 
 		int getOff() { return offset; }
 		int getDepth() { return depth; }
+		virtual bool isRVal() const { return true; }
 };
 
 
@@ -275,6 +276,7 @@ class RVal: public Expr {
 
 class LVal: public Expr {
 	public:
+		virtual bool isRVal() const override { return false; }
 };
 
 
@@ -330,7 +332,7 @@ class UnOp : public RVal {
 		virtual void igen() override {
 			expr->igen();
 
-			if (op.compare("-") == 0) quadGENQUAD(op, expr->place, "-", place, hasReal, expr->getDepth(), 0, getDepth(), expr->getOff(), 0, getOff(), expr->type->getSize(), 0, type->getSize());
+			if (op.compare("-") == 0) quadGENQUAD(op, "0", expr->place, place, hasReal, 0, expr->getDepth(), getDepth(), 0, expr->getOff(), getOff(), 0, expr->type->getSize(), type->getSize());
 			else if (op.compare("not") == 0) {
 				quadTRUE = expr->quadFALSE;
 				quadFALSE = expr->quadTRUE;
@@ -898,6 +900,7 @@ class Call : public Stmt {
 								yyerror(errMsg);
 							}
 						}
+						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure expects a call-by-reference parameter, but an RVal was given instead.");
 						++i;
 					}
 				}
@@ -949,7 +952,7 @@ class Call : public Stmt {
 
 			if (!isProc) {
                 std::string W = "$" + std::to_string(quadNEWTEMP());
-                quadGENQUAD("par", "RET", W, "-", retReal, 0, depth, 0, 0, initOffset + 6, 0, 0, size, 0);
+                quadGENQUAD("par", W, "RET", "-", retReal, depth, 0, 0, initOffset + 6, 0, 0, size, 0, 0);
             }
 
 			quadGENQUAD("call", "-", "-", id->getId(), lib); /* ??? */
@@ -963,7 +966,7 @@ class CallRVal : public RVal {
 		std::unique_ptr<Id> id;
 		std::unique_ptr<ExprList> func;
 		std::shared_ptr<FormalList> fL;
-		bool lib;
+		bool lib, isProc, retReal;
 
 	public:
 		CallRVal(std::unique_ptr<Id> i, std::unique_ptr<ExprList> eL=std::move(std::make_unique<ExprList>())) : id(std::move(i)), func(std::move(eL)), fL(nullptr) {}
@@ -1003,18 +1006,36 @@ class CallRVal : public RVal {
 				for (const auto &f : fL->getList()) {
 					int k = f->getIdList().size();
 					for (int j=0; j<k; j++) {
-						if ((f->getType()).compare(func->getList()[i]->type->getName()) || ((f->getType().compare("Real()")==0) && (func->getList()[i]->typeCheck(TYPE_INTEGER)))) yyerror("Type mismatch.");
-					}
+						if ((f->getType()).compare(func->getList()[i]->type->getNameNoSize())) {
+							if ((f->getType().compare("Real") == 0) && func->getList()[i]->typeCheck(TYPE_INTEGER));
+							else {
+								std::string errMsg = "Type mismatch. Expected " + f->getType() + " for " + f->getName() + ", but got a(n) " + func->getList()[i]->type->getNameNoSize() + " instead, in the form of " + func->getList()[i]->getName() + ".";
+								yyerror(errMsg);
+							}
+						}
+						if ((f->quadPARAMMODE().compare("R") == 0) && (func->getList()[i]->isRVal())) yyerror("Function or Procedure expects a call-by-reference parameter, but an RVal was given instead.");}
 				}
 			}
-			type = std::move(st.lookup(funcName)->type);
+
+
+			type = st.lookup(funcName)->type;
+			isProc = (type->getType() == TYPE_PROC);
 			lib = st.isLib(id->getId());
+			retReal = (st.lookup(id->getId())->type->getType() == TYPE_REAL);
+
+			depth = st.getDepth();
+			offset = st.getOff();
+			if (!isProc) {
+				size = st.lookup(id->getId())->type->getSize();
+				st.addTemp(size);
+			}
 
 			st.refreshFormals(funcName, fL);
 		}
 
 		virtual void igen() override {
-			int i = 0;
+			int i = 0, initOffset = offset;
+
 			if (func) func->igen();
 
 			if (!fL->isEmpty()) {
@@ -1044,7 +1065,7 @@ class CallRVal : public RVal {
 
 			// quadGENQUAD("call", "-", "-", id->getId());
 			place = "$" + std::to_string(quadNEWTEMP()); /* ??? */
-			quadGENQUAD("par", "RET", place, "-");
+			quadGENQUAD("par", place, "RET", "-", retReal, depth, 0, 0, initOffset + 6, 0, 0, size, 0, 0);
 			quadGENQUAD("call", "-", "-", id->getId(), lib, id->getDepth(), 0, 0, 0, 0, 0); /* ??? */
 		}
 };
@@ -1083,7 +1104,7 @@ class Dispose: public Stmt {
 
 		virtual void igen() override {
 			quadGENQUAD("par", oldPlace, "R", "-");
-			quadGENQUAD("call", "-", "-", "dispose");
+			quadGENQUAD("call", "-", "-", "dispose", true);
 			quadNEXT = quadEMPTYLIST();
 		}
 };
@@ -1625,6 +1646,8 @@ class Result : public LVal {
 			type = std::make_shared<TypeRes>();
 
 			place = "$$";
+			depth = st.getDepth();
+			offset = 6;
 		}
 
 		virtual void igen() override {  }

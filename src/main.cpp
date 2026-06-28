@@ -1,7 +1,9 @@
 #include <cstdio>
 #include <memory>
+#include<set>
 #include <string>
 #include <fstream>
+#include <vector>
 
 #include "lexer.hpp"
 #include "basic.hpp"
@@ -15,7 +17,8 @@
 extern FILE *yyin;
 std::unique_ptr<Body> ast;
 std::string name, assembly;
-std::vector<std::string> stringsUsed, libsUsed;
+std::vector<std::string> stringsUsed;
+std::set<std::string> libsUsed;
 std::vector<std::pair<std::string, int>> tmpLine;
 std::vector<int> labels, jumps;
 int funcNum;
