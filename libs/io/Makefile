@@ -7,7 +7,7 @@ OBJ=$(ASS:.s=.o)
 %.o: %.s
 	@$(AS) $(ASFLAGS) -o $@ $^
 
-all: $(OBJ)
+all: writeString.o writeInteger.o writeChar.o
 
 clean:
 	@rm -f *.o
